@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'services/product_service.dart';
 
 void main() {
   runApp(const CollectionStore());
@@ -25,8 +26,36 @@ class CollectionStore extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final ProductService productService = ProductService();
+
+  late Future<List<dynamic>> productsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    productsFuture = productService.getProducts();
+  }
+
+  IconData getCategoryIcon(String category) {
+    switch (category) {
+      case 'سکه':
+        return Icons.monetization_on;
+      case 'اسکناس':
+        return Icons.payments;
+      case 'تمبر':
+        return Icons.mail;
+      default:
+        return Icons.watch;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +115,6 @@ class HomePage extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // Search Box
                 TextField(
                   decoration: InputDecoration(
                     hintText: 'جستجوی سکه، اسکناس، تمبر و ...',
@@ -112,7 +140,6 @@ class HomePage extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // Categories
                 SizedBox(
                   height: 100,
                   child: ListView(
@@ -150,36 +177,101 @@ class HomePage extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // Products
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.85,
-                  children: const [
-                    ProductCard(
-                      name: 'سکه کلکسیونی',
-                      price: '۵۰۰٬۰۰۰ تومان',
-                      icon: Icons.monetization_on,
-                    ),
-                    ProductCard(
-                      name: 'تمبر قدیمی',
-                      price: '۳۵۰٬۰۰۰ تومان',
-                      icon: Icons.mail,
-                    ),
-                    ProductCard(
-                      name: 'اسکناس قدیمی',
-                      price: '۷۰۰٬۰۰۰ تومان',
-                      icon: Icons.payments,
-                    ),
-                    ProductCard(
-                      name: 'ساعت کلکسیونی',
-                      price: '۹۰۰٬۰۰۰ تومان',
-                      icon: Icons.watch,
-                    ),
-                  ],
+                FutureBuilder<List<dynamic>>(
+                  future: productsFuture,
+
+                  builder: (context, snapshot) {
+
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(30),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF245B45),
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 40,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'دریافت محصولات با خطا مواجه شد.',
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  productsFuture =
+                                      productService.getProducts();
+                                });
+                              },
+                              child: const Text('تلاش مجدد'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final products = snapshot.data ?? [];
+
+                    if (products.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(25),
+                          child: Text(
+                            'هنوز محصولی ثبت نشده است.',
+                            style: TextStyle(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics:
+                          const NeverScrollableScrollPhysics(),
+                      itemCount: products.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                      ),
+                      itemBuilder: (context, index) {
+                        final product =
+                            products[index] as Map<String, dynamic>;
+
+                        final name =
+                            product['name']?.toString() ??
+                            'بدون نام';
+
+                        final category =
+                            product['category']?.toString() ?? '';
+
+                        final price =
+                            product['price']?.toString() ??
+                            'نامشخص';
+
+                        return ProductCard(
+                          name: name,
+                          price: '$price تومان',
+                          icon: getCategoryIcon(category),
+                        );
+                      },
+                    );
+                  },
                 ),
               ],
             ),
@@ -212,7 +304,6 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// Category Widget
 class CategoryItem extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -251,7 +342,6 @@ class CategoryItem extends StatelessWidget {
   }
 }
 
-// Product Widget
 class ProductCard extends StatelessWidget {
   final String name;
   final String price;
@@ -283,6 +373,7 @@ class ProductCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             name,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
