@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from auth_service import generate_otp
 
 from database import (
     create_tables,
@@ -27,6 +28,10 @@ class Product(BaseModel):
     description: str = ""
     price: int
     quantity: int = 0
+
+
+class SendCodeRequest(BaseModel):
+    phone_number: str
 
 
 @app.get("/")
@@ -94,4 +99,22 @@ def remove_product(product_id: int):
 
     return {
         "message": "Product deleted successfully!"
+    }
+
+
+@app.post("/auth/send-code")
+def send_login_code(request: SendCodeRequest):
+
+    phone = request.phone_number.strip()
+
+    if len(phone) != 11 or not phone.startswith("09") or not phone.isdigit():
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid phone number"
+        )
+
+    generate_otp(phone)
+
+    return {
+        "message": "Verification code generated successfully"
     }

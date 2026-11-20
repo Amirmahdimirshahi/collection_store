@@ -26,6 +26,18 @@ def create_tables():
         )
     """)
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone_number TEXT NOT NULL UNIQUE,
+            full_name TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'customer'
+                CHECK(role IN ('customer', 'admin')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
     connection.commit()
     connection.close()
 
@@ -93,7 +105,6 @@ if __name__ == "__main__":
         print("----------------------")
         
 
-# ویرایش محصول
 def update_product(product_id, name, category, description, price, quantity):
     connection = connect_db()
 
@@ -111,7 +122,6 @@ def update_product(product_id, name, category, description, price, quantity):
     return updated
 
 
-# حذف محصول
 def delete_product(product_id):
     connection = connect_db()
 
@@ -125,5 +135,30 @@ def delete_product(product_id):
     connection.close()
 
     return deleted
+
+
+def add_user(phone_number, full_name):
+    connection = connect_db()
+
+    connection.execute("""
+        INSERT INTO users (phone_number, full_name, role)
+        VALUES (?, ?, 'customer')
+    """, (phone_number, full_name))
+
+    connection.commit()
+    connection.close()
+
+
+def get_user_by_phone(phone_number):
+    connection = connect_db()
+
+    user = connection.execute("""
+        SELECT * FROM users
+        WHERE phone_number = ?
+    """, (phone_number,)).fetchone()
+
+    connection.close()
+
+    return dict(user) if user else None
 
 

@@ -17,4 +17,34 @@ class ProductService {
       throw Exception('خطا در دریافت محصولات');
     }
   }
+
+  Future<void> addProduct({
+    required String name,
+    required String category,
+    required String description,
+    required int price,
+    required int quantity,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/products'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'category': category,
+        'description': description,
+        'price': price,
+        'quantity': quantity,
+      }),
+    );
+
+    if (response.statusCode != 200 &&
+        response.statusCode != 201) {
+      throw Exception(
+        'خطا در ثبت محصول: ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
 }
