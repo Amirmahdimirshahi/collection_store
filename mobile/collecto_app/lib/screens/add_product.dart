@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+
 import '../services/product_service.dart';
 
 class AddProductPage extends StatefulWidget {
@@ -40,21 +40,16 @@ class _AddProductPageState extends State<AddProductPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('محصول با موفقیت ثبت شد'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('محصول با موفقیت ثبت شد')));
 
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('خطا در ثبت محصول: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('خطا در ثبت محصول: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -76,10 +71,7 @@ class _AddProductPageState extends State<AddProductPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('افزودن محصول'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('افزودن محصول'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -89,10 +81,7 @@ class _AddProductPageState extends State<AddProductPage> {
             children: [
               const Text(
                 'اطلاعات محصول جدید',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 20),
@@ -114,15 +103,14 @@ class _AddProductPageState extends State<AddProductPage> {
 
               const SizedBox(height: 16),
 
-              DropdownButtonFormField<String>(
-                value: selectedCategory,
+              DropdownButtonFormField(
+                initialValue: selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'دسته‌بندی',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.category),
                 ),
-                items: ['سکه', 'اسکناس', 'تمبر', 'سایر']
-                    .map((category) {
+                items: ['سکه', 'اسکناس', 'تمبر', 'سایر'].map((category) {
                   return DropdownMenuItem(
                     value: category,
                     child: Text(category),
@@ -196,10 +184,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 ),
                 child: isLoading
                     ? const CircularProgressIndicator()
-                    : const Text(
-                        'ثبت محصول',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                    : const Text('ثبت محصول', style: TextStyle(fontSize: 16)),
               ),
             ],
           ),

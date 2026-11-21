@@ -1,15 +1,12 @@
-
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 class ProductService {
   static const String baseUrl = 'http://192.168.1.247:8000';
 
-
   Future<List<dynamic>> getProducts() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/products'),
-    );
+    final response = await http.get(Uri.parse('$baseUrl/products'));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -27,9 +24,7 @@ class ProductService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/products'),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'name': name,
         'category': category,
@@ -39,12 +34,10 @@ class ProductService {
       }),
     );
 
-    if (response.statusCode != 200 &&
-        response.statusCode != 201) {
+    if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(
         'خطا در ثبت محصول: ${response.statusCode} - ${response.body}',
       );
     }
   }
-
 }
