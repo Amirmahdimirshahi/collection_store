@@ -3,15 +3,12 @@ import secrets
 import hashlib
 import time
 
-# کدهای موقت ورود
 otp_codes = {}
 
 
 def generate_otp(phone_number):
-    # تولید کد شش رقمی
     code = f"{secrets.randbelow(1000000):06d}"
 
-    # ذخیره هش کد به همراه زمان انقضا
     code_hash = hashlib.sha256(code.encode()).hexdigest()
 
     otp_codes[phone_number] = {
@@ -20,7 +17,6 @@ def generate_otp(phone_number):
         "attempts": 0
     }
 
-    # نمایش کد فقط در محیط توسعه
     print(f"OTP for {phone_number}: {code}")
 
     return True

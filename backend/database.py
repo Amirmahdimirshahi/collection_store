@@ -26,6 +26,26 @@ def create_tables():
         )
     """)
 
+    user_columns = connection.execute(
+        "PRAGMA table_info(users)"
+    ).fetchall()
+
+    existing_columns = [column["name"] for column in user_columns]
+
+    if user_columns and "phone_number" not in existing_columns:
+        user_count = connection.execute(
+            "SELECT COUNT(*) FROM users"
+        ).fetchone()[0]
+
+        if user_count > 0:
+            connection.close()
+            raise RuntimeError(
+                "جدول کاربران قدیمی دارای اطلاعات است. "
+                "قبل از تغییر باید اطلاعات آن مهاجرت داده شود."
+            )
+
+        connection.execute("DROP TABLE users")
+
     connection.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,86 +57,84 @@ def create_tables():
         )
     """)
 
-
     connection.commit()
     connection.close()
-
-
-if __name__ == "__main__":
-    create_tables()
-    print("Database created successfully!")
 
 
 def add_product(name, category, description, price, quantity):
     connection = connect_db()
 
-    connection.execute("""
+    cursor = connection.execute("""
         INSERT INTO products
         (name, category, description, price, quantity)
         VALUES (?, ?, ?, ?, ?)
     """, (name, category, description, price, quantity))
 
+    product_id = cursor.lastrowid
+
     connection.commit()
     connection.close()
 
-    print("Product added successfully!")
-
-
-if __name__ == "__main__":
-    create_tables()
-
-    add_product(
-        "سکه یادبود",
-        "سکه",
-        "سکه کلکسیونی قدیمی",
-        500000,
-        2
-    )
-
-    print("Database is ready!")
+    return product_id
 
 
 def get_products():
     connection = connect_db()
 
-    products = connection.execute(
-        "SELECT * FROM products"
-    ).fetchall()
+    products = connection.execute("""
+        SELECT * FROM products
+        ORDER BY id DESC
+    """).fetchall()
 
     connection.close()
 
     return [dict(product) for product in products]
 
 
+def get_product_by_id(product_id):
+    connection = connect_db()
 
-if __name__ == "__main__":
-    create_tables()
+    product = connection.execute("""
+        SELECT * FROM products
+        WHERE id = ?
+    """, (product_id,)).fetchone()
 
-    products = get_products()
+    connection.close()
 
-    print("\n--- Collection Store Products ---")
+    return dict(product) if product else None
 
-    for product in products:
-        print("ID:", product["id"])
-        print("Name:", product["name"])
-        print("Category:", product["category"])
-        print("Price:", product["price"])
-        print("Quantity:", product["quantity"])
-        print("----------------------")
-        
 
-def update_product(product_id, name, category, description, price, quantity):
+def update_product(
+    product_id,
+    name,
+    category,
+    description,
+    price,
+    quantity
+):
     connection = connect_db()
 
     cursor = connection.execute("""
         UPDATE products
-        SET name = ?, category = ?, description = ?,
-            price = ?, quantity = ?
+        SET name = ?,
+            category = ?,
+            description = ?,
+            price = ?,
+            quantity = ?
         WHERE id = ?
-    """, (name, category, description, price, quantity, product_id))
+    """, (
+        name,
+        category,
+        description,
+        price,
+        quantity,
+        product_id
+    ))
 
     connection.commit()
+
     updated = cursor.rowcount > 0
+
     connection.close()
 
     return updated
@@ -125,13 +143,15 @@ def update_product(product_id, name, category, description, price, quantity):
 def delete_product(product_id):
     connection = connect_db()
 
-    cursor = connection.execute(
-        "DELETE FROM products WHERE id = ?",
-        (product_id,)
-    )
+    cursor = connection.execute("""
+        DELETE FROM products
+        WHERE id = ?
+    """, (product_id,))
 
     connection.commit()
+
     deleted = cursor.rowcount > 0
+
     connection.close()
 
     return deleted
@@ -140,13 +160,18 @@ def delete_product(product_id):
 def add_user(phone_number, full_name):
     connection = connect_db()
 
-    connection.execute("""
-        INSERT INTO users (phone_number, full_name, role)
+    cursor = connection.execute("""
+        INSERT INTO users
+        (phone_number, full_name, role)
         VALUES (?, ?, 'customer')
     """, (phone_number, full_name))
 
+    user_id = cursor.lastrowid
+
     connection.commit()
     connection.close()
+
+    return user_id
 
 
 def get_user_by_phone(phone_number):
@@ -162,3 +187,41 @@ def get_user_by_phone(phone_number):
     return dict(user) if user else None
 
 
+def get_user_by_id(user_id):
+    connection = connect_db()
+
+    user = connection.execute("""
+        SELECT * FROM users
+        WHERE id = ?
+    """, (user_id,)).fetchone()
+
+    connection.close()
+
+    return dict(user) if user else None
+
+
+def get_database_stats():
+    connection = connect_db()
+
+    product_count = connection.execute(
+        "SELECT COUNT(*) FROM products"
+    ).fetchone()[0]
+
+    user_count = connection.execute(
+        "SELECT COUNT(*) FROM users"
+    ).fetchone()[0]
+
+    connection.close()
+
+    return {
+        "products": product_count,
+        "users": user_count
+    }
+
+
+if __name__ == "__main__":
+    create_tables()
+
+    print("Database is ready!")
+
+    print(get_database_stats())
