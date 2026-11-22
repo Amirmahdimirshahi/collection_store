@@ -358,3 +358,47 @@ def create_order(user_id, items):
 
     finally:
         connection.close()
+
+
+def get_user_orders(user_id):
+    connection = connect_db()
+
+    try:
+        orders = connection.execute("""
+            SELECT
+                id,
+                user_id,
+                total_price,
+                status,
+                created_at
+            FROM orders
+            WHERE user_id = ?
+            ORDER BY created_at DESC, id DESC
+        """, (user_id,)).fetchall()
+
+        result = []
+
+        for order in orders:
+            order_data = dict(order)
+
+            items = connection.execute("""
+                SELECT
+                    product_id,
+                    product_name,
+                    quantity,
+                    unit_price,
+                    total_price
+                FROM order_items
+                WHERE order_id = ?
+            """, (order["id"],)).fetchall()
+
+            order_data["items"] = [
+                dict(item) for item in items
+            ]
+
+            result.append(order_data)
+
+        return result
+
+    finally:
+        connection.close()

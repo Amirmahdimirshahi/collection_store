@@ -32,4 +32,27 @@ class OrderService {
           'ثبت سفارش با خطا مواجه شد.',
     );
   }
+
+  Future<List<Map<String, dynamic>>> getUserOrders({
+    required int userId,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/$userId/orders'),
+    );
+
+    final responseData = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      final orders = responseData['orders'] as List;
+
+      return orders
+          .map((order) => Map<String, dynamic>.from(order))
+          .toList();
+    }
+
+    throw Exception(
+      responseData['detail']?.toString() ??
+          'دریافت تاریخچه سفارش‌ها ناموفق بود.',
+    );
+  }
 }

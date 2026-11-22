@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
 from auth_service import generate_otp, verify_otp
 
 from database import (
@@ -11,7 +12,9 @@ from database import (
     delete_product,
     add_user,
     create_order,
-    get_user_by_phone
+    get_user_by_phone,
+    get_user_by_id,
+    get_user_orders
 )
 
 
@@ -35,7 +38,8 @@ class Product(BaseModel):
 
 class SendCodeRequest(BaseModel):
     phone_number: str
-    
+
+
 class VerifyCodeRequest(BaseModel):
     phone_number: str
     full_name: str
@@ -50,6 +54,7 @@ class OrderItemRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     user_id: int
     items: list[OrderItemRequest]
+
 
 @app.get("/")
 def home():
@@ -66,7 +71,6 @@ def products_list():
 
 @app.post("/products")
 def create_product(product: Product):
-
     add_product(
         product.name,
         product.category,
@@ -82,7 +86,6 @@ def create_product(product: Product):
 
 @app.put("/products/{product_id}")
 def edit_product(product_id: int, product: Product):
-
     updated = update_product(
         product_id,
         product.name,
@@ -105,7 +108,6 @@ def edit_product(product_id: int, product: Product):
 
 @app.delete("/products/{product_id}")
 def remove_product(product_id: int):
-
     deleted = delete_product(product_id)
 
     if not deleted:
@@ -121,7 +123,6 @@ def remove_product(product_id: int):
 
 @app.post("/auth/send-code")
 def send_login_code(request: SendCodeRequest):
-
     phone = request.phone_number.strip()
 
     if len(phone) != 11 or not phone.startswith("09") or not phone.isdigit():
@@ -139,19 +140,27 @@ def send_login_code(request: SendCodeRequest):
 
 @app.post("/auth/verify-code")
 def verify_login_code(request: VerifyCodeRequest):
-
     phone = request.phone_number.strip()
     name = request.full_name.strip()
     code = request.code.strip()
 
     if not phone.isdigit() or len(phone) != 11 or not phone.startswith("09"):
-        raise HTTPException(status_code=400, detail="Invalid phone number")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid phone number"
+        )
 
     if not name:
-        raise HTTPException(status_code=400, detail="Full name is required")
+        raise HTTPException(
+            status_code=400,
+            detail="Full name is required"
+        )
 
     if not verify_otp(phone, code):
-        raise HTTPException(status_code=400, detail="Invalid or expired code")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired code"
+        )
 
     user = get_user_by_phone(phone)
 
@@ -167,7 +176,6 @@ def verify_login_code(request: VerifyCodeRequest):
 
 @app.post("/orders")
 def create_new_order(request: CreateOrderRequest):
-
     if not request.items:
         raise HTTPException(
             status_code=400,
@@ -196,3 +204,18 @@ def create_new_order(request: CreateOrderRequest):
             status_code=400,
             detail=str(error)
         )
+
+
+@app.get("/users/{user_id}/orders")
+def read_user_orders(user_id: int):
+    user = get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="کاربر پیدا نشد."
+        )
+
+    return {
+        "orders": get_user_orders(user_id)
+    }

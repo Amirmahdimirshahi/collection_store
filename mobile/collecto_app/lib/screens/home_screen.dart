@@ -6,8 +6,10 @@ import '../services/product_service.dart';
 import '../services/cart_service.dart';
 import '../widgets/category_item.dart';
 import '../widgets/product_card.dart';
+
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
+import 'order_history_screen.dart';
 
 class HomePage extends StatefulWidget {
   final int userId;
@@ -23,15 +25,25 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ProductService productService = ProductService();
-
   final CartService cartService = CartService();
 
   late Future<List<dynamic>> productsFuture;
+
+  final TextEditingController searchController =
+      TextEditingController();
+
+  String searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     productsFuture = productService.getProducts();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   IconData getCategoryIcon(String category) {
@@ -47,15 +59,51 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void openOrderHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderHistoryScreen(
+          userId: widget.userId,
+        ),
+      ),
+    );
+  }
+
+  List<dynamic> filterProducts(List<dynamic> products) {
+    if (searchQuery.trim().isEmpty) {
+      return products;
+    }
+
+    final query = searchQuery.trim().toLowerCase();
+
+    return products.where((product) {
+      final name =
+          product['name']?.toString().toLowerCase() ?? '';
+
+      final category =
+          product['category']?.toString().toLowerCase() ?? '';
+
+      final description =
+          product['description']?.toString().toLowerCase() ?? '';
+
+      return name.contains(query) ||
+          category.contains(query) ||
+          description.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F7F3),
+
         appBar: AppBar(
           backgroundColor: const Color(0xFF245B45),
           foregroundColor: Colors.white,
+
           title: const Text(
             'کالکتو',
             style: TextStyle(
@@ -63,11 +111,32 @@ class _HomePageState extends State<HomePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
+
           centerTitle: true,
-          leading: IconButton(
+
+          leading: PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
-            onPressed: () {},
+
+            onSelected: (value) {
+              if (value == 'orders') {
+                openOrderHistory();
+              }
+            },
+
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: 'orders',
+                child: Row(
+                  children: [
+                    Icon(Icons.receipt_long_outlined),
+                    SizedBox(width: 10),
+                    Text('تاریخچه سفارش‌ها'),
+                  ],
+                ),
+              ),
+            ],
           ),
+
           actions: [
             IconButton(
               icon: const Icon(Icons.shopping_cart_outlined),
@@ -85,11 +154,14 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+
         body: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16),
+
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
                 const Text(
                   'به دنیای کلکسیون خوش آمدید',
@@ -98,7 +170,9 @@ class _HomePageState extends State<HomePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 const Text(
                   'کالاهای خاص، تاریخی و ارزشمند را کشف کنید.',
                   style: TextStyle(
@@ -106,20 +180,48 @@ class _HomePageState extends State<HomePage> {
                     fontSize: 14,
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
                 TextField(
+                  controller: searchController,
+
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                    });
+                  },
+
                   decoration: InputDecoration(
                     hintText: 'جستجوی سکه، اسکناس، تمبر و ...',
+
                     prefixIcon: const Icon(Icons.search),
+
+                    suffixIcon: searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              searchController.clear();
+
+                              setState(() {
+                                searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+
                     filled: true,
                     fillColor: Colors.white,
+
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide.none,
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 25),
+
                 const Text(
                   'دسته‌بندی محصولات',
                   style: TextStyle(
@@ -127,24 +229,31 @@ class _HomePageState extends State<HomePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 14),
+
                 SizedBox(
                   height: 100,
+
                   child: ListView(
                     scrollDirection: Axis.horizontal,
+
                     children: const [
                       CategoryItem(
                         title: 'سکه',
                         icon: Icons.monetization_on,
                       ),
+
                       CategoryItem(
                         title: 'اسکناس',
                         icon: Icons.payments,
                       ),
+
                       CategoryItem(
                         title: 'تمبر',
                         icon: Icons.mail,
                       ),
+
                       CategoryItem(
                         title: 'اشیای قدیمی',
                         icon: Icons.watch,
@@ -152,23 +261,32 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 25),
-                const Text(
-                  'محصولات منتخب',
-                  style: TextStyle(
+
+                Text(
+                  searchQuery.isEmpty
+                      ? 'محصولات منتخب'
+                      : 'نتایج جستجو',
+
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 14),
+
                 FutureBuilder<List<dynamic>>(
                   future: productsFuture,
+
                   builder: (context, snapshot) {
                     if (snapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.all(30),
+
                           child: CircularProgressIndicator(
                             color: Color(0xFF245B45),
                           ),
@@ -185,10 +303,13 @@ class _HomePageState extends State<HomePage> {
                               size: 40,
                               color: Colors.red,
                             ),
+
                             const SizedBox(height: 10),
+
                             const Text(
                               'دریافت محصولات با خطا مواجه شد.',
                             ),
+
                             TextButton(
                               onPressed: () {
                                 setState(() {
@@ -196,6 +317,7 @@ class _HomePageState extends State<HomePage> {
                                       productService.getProducts();
                                 });
                               },
+
                               child: const Text('تلاش مجدد'),
                             ),
                           ],
@@ -203,15 +325,24 @@ class _HomePageState extends State<HomePage> {
                       );
                     }
 
-                    final products = snapshot.data ?? [];
+                    final allProducts = snapshot.data ?? [];
+
+                    final products =
+                        filterProducts(allProducts);
 
                     if (products.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Padding(
-                          padding: EdgeInsets.all(25),
+                          padding: const EdgeInsets.all(25),
+
                           child: Text(
-                            'هنوز محصولی ثبت نشده است.',
-                            style: TextStyle(color: Colors.grey),
+                            searchQuery.isEmpty
+                                ? 'هنوز محصولی ثبت نشده است.'
+                                : 'محصولی با این مشخصات پیدا نشد.',
+
+                            style: const TextStyle(
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                       );
@@ -219,9 +350,12 @@ class _HomePageState extends State<HomePage> {
 
                     return GridView.builder(
                       shrinkWrap: true,
+
                       physics:
                           const NeverScrollableScrollPhysics(),
+
                       itemCount: products.length,
+
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -229,6 +363,7 @@ class _HomePageState extends State<HomePage> {
                         mainAxisSpacing: 12,
                         childAspectRatio: 0.85,
                       ),
+
                       itemBuilder: (context, index) {
                         final product =
                             products[index] as Map<String, dynamic>;
@@ -251,6 +386,7 @@ class _HomePageState extends State<HomePage> {
                           name: name,
                           price: '$price تومان',
                           icon: getCategoryIcon(category),
+
                           onTap: () {
                             Navigator.push(
                               context,
@@ -272,21 +408,26 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
+
         bottomNavigationBar: NavigationBar(
           selectedIndex: 0,
+
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.home_outlined),
               label: 'خانه',
             ),
+
             NavigationDestination(
               icon: Icon(Icons.category_outlined),
               label: 'دسته‌ها',
             ),
+
             NavigationDestination(
               icon: Icon(Icons.favorite_border),
               label: 'علاقه‌مندی',
             ),
+
             NavigationDestination(
               icon: Icon(Icons.person_outline),
               label: 'حساب من',
