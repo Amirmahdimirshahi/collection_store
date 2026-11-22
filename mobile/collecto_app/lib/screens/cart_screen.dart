@@ -1,11 +1,86 @@
+
 import 'package:flutter/material.dart';
 
 import '../services/cart_service.dart';
+import '../services/order_service.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   final CartService cartService;
+  final int userId;
 
-  const CartScreen({super.key, required this.cartService});
+  const CartScreen({
+    super.key,
+    required this.cartService,
+    required this.userId,
+  });
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  final OrderService orderService = OrderService();
+
+  bool isLoading = false;
+
+  Future<void> submitOrder() async {
+    final items = widget.cartService.items;
+
+    if (items.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final orderItems = items.map((item) {
+        return {
+          'product_id': item.product.id,
+          'quantity': item.quantity,
+        };
+      }).toList();
+
+      final response = await orderService.createOrder(
+        userId: widget.userId,
+        items: orderItems,
+      );
+
+      widget.cartService.clearCart();
+
+      if (!mounted) return;
+
+      final order = response['order'];
+      final orderId = order?['order_id'];
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'سفارش شما با موفقیت ثبت شد. شماره سفارش: $orderId',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ثبت سفارش ناموفق بود: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +92,9 @@ class CartScreen extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: AnimatedBuilder(
-        animation: cartService,
+        animation: widget.cartService,
         builder: (context, child) {
-          final items = cartService.items;
+          final items = widget.cartService.items;
 
           if (items.isEmpty) {
             return const Center(
@@ -32,7 +107,10 @@ class CartScreen extends StatelessWidget {
                     color: Colors.grey,
                   ),
                   SizedBox(height: 16),
-                  Text('سبد خرید شما خالی است', style: TextStyle(fontSize: 18)),
+                  Text(
+                    'سبد خرید شما خالی است',
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ],
               ),
             );
@@ -61,7 +139,8 @@ class CartScreen extends StatelessWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     item.product.name,
@@ -71,14 +150,19 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Text('قیمت: ${item.product.price} تومان'),
-                                  Text('جمع: ${item.totalPrice} تومان'),
+                                  Text(
+                                    'قیمت: ${item.product.price} تومان',
+                                  ),
+                                  Text(
+                                    'جمع: ${item.totalPrice} تومان',
+                                  ),
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
                                       IconButton(
                                         onPressed: () {
-                                          cartService.decreaseQuantity(
+                                          widget.cartService
+                                              .decreaseQuantity(
                                             item.product.id,
                                           );
                                         },
@@ -92,7 +176,8 @@ class CartScreen extends StatelessWidget {
                                             item.quantity <
                                                 item.product.quantity
                                             ? () {
-                                                cartService.increaseQuantity(
+                                                widget.cartService
+                                                    .increaseQuantity(
                                                   item.product.id,
                                                 );
                                               }
@@ -108,7 +193,9 @@ class CartScreen extends StatelessWidget {
                             ),
                             IconButton(
                               onPressed: () {
-                                cartService.removeProduct(item.product.id);
+                                widget.cartService.removeProduct(
+                                  item.product.id,
+                                );
                               },
                               icon: const Icon(
                                 Icons.delete_outline,
@@ -128,21 +215,25 @@ class CartScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'تعداد کل محصولات:',
                           style: TextStyle(fontSize: 16),
                         ),
                         Text(
-                          '${cartService.itemCount}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          '${widget.cartService.itemCount}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'مبلغ قابل پرداخت:',
@@ -152,7 +243,7 @@ class CartScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${cartService.totalPrice} تومان',
+                          '${widget.cartService.totalPrice} تومان',
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
@@ -165,21 +256,22 @@ class CartScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'بخش ثبت سفارش در مراحل بعدی تکمیل می‌شود.',
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: isLoading ? null : submitOrder,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF245B45),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.all(15),
                         ),
-                        child: const Text('ادامه و ثبت سفارش'),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('ادامه و ثبت سفارش'),
                       ),
                     ),
                   ],

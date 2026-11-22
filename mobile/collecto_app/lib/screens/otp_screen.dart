@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
@@ -6,16 +7,21 @@ import 'home_screen.dart';
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
 
-  const OtpScreen({super.key, required this.phoneNumber});
+  const OtpScreen({
+    super.key,
+    required this.phoneNumber,
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final TextEditingController codeController = TextEditingController();
+  final TextEditingController codeController =
+      TextEditingController();
 
-  final TextEditingController nameController = TextEditingController();
+  final TextEditingController nameController =
+      TextEditingController();
 
   final AuthService authService = AuthService();
 
@@ -27,7 +33,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
     if (code.length != 6 || fullName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('نام و کد ۶ رقمی را وارد کنید')),
+        const SnackBar(
+          content: Text('نام و کد ۶ رقمی را وارد کنید'),
+        ),
       );
       return;
     }
@@ -35,24 +43,37 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => isLoading = true);
 
     try {
-      await authService.verifyCode(
+      final response = await authService.verifyCode(
         phoneNumber: widget.phoneNumber,
         fullName: fullName,
         code: code,
       );
 
+      final user = response['user'];
+
+      if (user == null || user['id'] == null) {
+        throw Exception('شناسه کاربر از سرور دریافت نشد.');
+      }
+
+      final int userId = user['id'] is int
+          ? user['id']
+          : int.parse(user['id'].toString());
+
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(
+          builder: (context) => HomePage(userId: userId),
+        ),
         (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -81,7 +102,10 @@ class _OtpScreenState extends State<OtpScreen> {
           children: [
             const Text('کد تأیید ارسال‌شده را وارد کنید'),
             const SizedBox(height: 12),
-            Text(widget.phoneNumber, textDirection: TextDirection.ltr),
+            Text(
+              widget.phoneNumber,
+              textDirection: TextDirection.ltr,
+            ),
             const SizedBox(height: 24),
             TextField(
               controller: nameController,

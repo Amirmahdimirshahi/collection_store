@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../models/product_model.dart';
@@ -9,7 +10,12 @@ import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final int userId;
+
+  const HomePage({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -47,16 +53,21 @@ class _HomePageState extends State<HomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F7F3),
-
         appBar: AppBar(
           backgroundColor: const Color(0xFF245B45),
           foregroundColor: Colors.white,
           title: const Text(
             'کالکتو',
-            style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           centerTitle: true,
-          leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {},
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.shopping_cart_outlined),
@@ -64,14 +75,16 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CartScreen(cartService: cartService),
+                    builder: (context) => CartScreen(
+                      cartService: cartService,
+                      userId: widget.userId,
+                    ),
                   ),
                 );
               },
             ),
           ],
         ),
-
         body: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -80,18 +93,20 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const Text(
                   'به دنیای کلکسیون خوش آمدید',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-
                 const SizedBox(height: 8),
-
                 const Text(
                   'کالاهای خاص، تاریخی و ارزشمند را کشف کنید.',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
                 ),
-
                 const SizedBox(height: 20),
-
                 TextField(
                   decoration: InputDecoration(
                     hintText: 'جستجوی سکه، اسکناس، تمبر و ...',
@@ -104,42 +119,53 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 25),
-
                 const Text(
                   'دسته‌بندی محصولات',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-
                 const SizedBox(height: 14),
-
                 SizedBox(
                   height: 100,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: const [
-                      CategoryItem(title: 'سکه', icon: Icons.monetization_on),
-                      CategoryItem(title: 'اسکناس', icon: Icons.payments),
-                      CategoryItem(title: 'تمبر', icon: Icons.mail),
-                      CategoryItem(title: 'اشیای قدیمی', icon: Icons.watch),
+                      CategoryItem(
+                        title: 'سکه',
+                        icon: Icons.monetization_on,
+                      ),
+                      CategoryItem(
+                        title: 'اسکناس',
+                        icon: Icons.payments,
+                      ),
+                      CategoryItem(
+                        title: 'تمبر',
+                        icon: Icons.mail,
+                      ),
+                      CategoryItem(
+                        title: 'اشیای قدیمی',
+                        icon: Icons.watch,
+                      ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 25),
-
                 const Text(
                   'محصولات منتخب',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-
                 const SizedBox(height: 14),
-
                 FutureBuilder<List<dynamic>>(
                   future: productsFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.all(30),
@@ -160,11 +186,14 @@ class _HomePageState extends State<HomePage> {
                               color: Colors.red,
                             ),
                             const SizedBox(height: 10),
-                            const Text('دریافت محصولات با خطا مواجه شد.'),
+                            const Text(
+                              'دریافت محصولات با خطا مواجه شد.',
+                            ),
                             TextButton(
                               onPressed: () {
                                 setState(() {
-                                  productsFuture = productService.getProducts();
+                                  productsFuture =
+                                      productService.getProducts();
                                 });
                               },
                               child: const Text('تلاش مجدد'),
@@ -190,25 +219,31 @@ class _HomePageState extends State<HomePage> {
 
                     return GridView.builder(
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+                      physics:
+                          const NeverScrollableScrollPhysics(),
                       itemCount: products.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.85,
-                          ),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                      ),
                       itemBuilder: (context, index) {
-                        final product = products[index] as Map<String, dynamic>;
+                        final product =
+                            products[index] as Map<String, dynamic>;
 
-                        final name = product['name']?.toString() ?? 'بدون نام';
+                        final name =
+                            product['name']?.toString() ?? 'بدون نام';
 
-                        final category = product['category']?.toString() ?? '';
+                        final category =
+                            product['category']?.toString() ?? '';
 
-                        final price = product['price']?.toString() ?? 'نامشخص';
+                        final price =
+                            product['price']?.toString() ?? 'نامشخص';
 
-                        final productModel = ProductModel.fromJson(
+                        final productModel =
+                            ProductModel.fromJson(
                           Map<String, dynamic>.from(product),
                         );
 
@@ -220,7 +255,8 @@ class _HomePageState extends State<HomePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => ProductDetailScreen(
+                                builder: (context) =>
+                                    ProductDetailScreen(
                                   product: productModel,
                                   cartService: cartService,
                                 ),
@@ -236,7 +272,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-
         bottomNavigationBar: NavigationBar(
           selectedIndex: 0,
           destinations: const [

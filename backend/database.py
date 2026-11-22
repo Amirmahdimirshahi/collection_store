@@ -10,7 +10,6 @@ def connect_db():
     connection.row_factory = sqlite3.Row
     return connection
 
-
 def create_tables():
     connection = connect_db()
 
@@ -54,6 +53,31 @@ def create_tables():
             role TEXT NOT NULL DEFAULT 'customer'
                 CHECK(role IN ('customer', 'admin')),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            total_price INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            product_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            unit_price INTEGER NOT NULL,
+            total_price INTEGER NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
         )
     """)
 
@@ -225,3 +249,112 @@ if __name__ == "__main__":
     print("Database is ready!")
 
     print(get_database_stats())
+
+
+def create_order(user_id, items):
+    connection = connect_db()
+
+    try:
+        user = connection.execute(
+            "SELECT id FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        if not user:
+            raise ValueError("کاربر پیدا نشد.")
+
+        total_price = 0
+        order_products = []
+
+        for item in items:
+            product_id = item["product_id"]
+            quantity = item["quantity"]
+
+            if quantity <= 0:
+                raise ValueError("تعداد محصول باید بیشتر از صفر باشد.")
+
+            product = connection.execute(
+                "SELECT * FROM products WHERE id = ?",
+                (product_id,)
+            ).fetchone()
+
+            if not product:
+                raise ValueError(
+                    f"محصول با شناسه {product_id} پیدا نشد."
+                )
+
+            if product["quantity"] < quantity:
+                raise ValueError(
+                    f"موجودی محصول {product['name']} کافی نیست."
+                )
+
+            unit_price = product["price"]
+            item_total = unit_price * quantity
+            total_price += item_total
+
+            order_products.append({
+                "product_id": product_id,
+                "product_name": product["name"],
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "total_price": item_total
+            })
+
+        cursor = connection.execute(
+            """
+            INSERT INTO orders (user_id, total_price, status)
+            VALUES (?, ?, 'pending')
+            """,
+            (user_id, total_price)
+        )
+
+        order_id = cursor.lastrowid
+
+        for item in order_products:
+            connection.execute(
+                """
+                INSERT INTO order_items (
+                    order_id,
+                    product_id,
+                    product_name,
+                    quantity,
+                    unit_price,
+                    total_price
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    order_id,
+                    item["product_id"],
+                    item["product_name"],
+                    item["quantity"],
+                    item["unit_price"],
+                    item["total_price"]
+                )
+            )
+
+            connection.execute(
+                """
+                UPDATE products
+                SET quantity = quantity - ?
+                WHERE id = ?
+                """,
+                (item["quantity"], item["product_id"])
+            )
+
+        connection.commit()
+
+        return {
+            "order_id": order_id,
+            "user_id": user_id,
+            "total_price": total_price,
+            "status": "pending",
+            "items": order_products
+        }
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()

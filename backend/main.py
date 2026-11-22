@@ -10,6 +10,7 @@ from database import (
     update_product,
     delete_product,
     add_user,
+    create_order,
     get_user_by_phone
 )
 
@@ -39,6 +40,16 @@ class VerifyCodeRequest(BaseModel):
     phone_number: str
     full_name: str
     code: str
+
+
+class OrderItemRequest(BaseModel):
+    product_id: int
+    quantity: int
+
+
+class CreateOrderRequest(BaseModel):
+    user_id: int
+    items: list[OrderItemRequest]
 
 @app.get("/")
 def home():
@@ -152,3 +163,36 @@ def verify_login_code(request: VerifyCodeRequest):
         "message": "Login successful",
         "user": user
     }
+
+
+@app.post("/orders")
+def create_new_order(request: CreateOrderRequest):
+
+    if not request.items:
+        raise HTTPException(
+            status_code=400,
+            detail="سبد خرید خالی است."
+        )
+
+    try:
+        order = create_order(
+            request.user_id,
+            [
+                {
+                    "product_id": item.product_id,
+                    "quantity": item.quantity
+                }
+                for item in request.items
+            ]
+        )
+
+        return {
+            "message": "سفارش با موفقیت ثبت شد.",
+            "order": order
+        }
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
