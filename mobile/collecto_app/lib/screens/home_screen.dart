@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/product_model.dart';
 import '../services/product_service.dart';
+import '../services/cart_service.dart';
 import '../widgets/category_item.dart';
 import '../widgets/product_card.dart';
+import 'product_detail_screen.dart';
+import 'cart_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,6 +17,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ProductService productService = ProductService();
+
+  final CartService cartService = CartService();
 
   late Future<List<dynamic>> productsFuture;
 
@@ -54,7 +60,14 @@ class _HomePageState extends State<HomePage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.shopping_cart_outlined),
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartScreen(cartService: cartService),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -195,10 +208,25 @@ class _HomePageState extends State<HomePage> {
 
                         final price = product['price']?.toString() ?? 'نامشخص';
 
+                        final productModel = ProductModel.fromJson(
+                          Map<String, dynamic>.from(product),
+                        );
+
                         return ProductCard(
                           name: name,
                           price: '$price تومان',
                           icon: getCategoryIcon(category),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProductDetailScreen(
+                                  product: productModel,
+                                  cartService: cartService,
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     );

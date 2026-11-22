@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ProductService {
-  static const String baseUrl = 'http://192.168.1.247:8000';
+  static const String baseUrl = 'http://10.137.47.140:8000';
 
   Future<List<dynamic>> getProducts() async {
     final response = await http.get(Uri.parse('$baseUrl/products'));
