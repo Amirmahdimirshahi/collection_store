@@ -52,19 +52,27 @@ class _OtpScreenState extends State<OtpScreen> {
       final user = response['user'];
 
       if (user == null || user['id'] == null) {
-        throw Exception('شناسه کاربر از سرور دریافت نشد.');
+        throw Exception('اطلاعات کاربر از سرور دریافت نشد.');
       }
 
-      final int userId = user['id'] is int
-          ? user['id']
-          : int.parse(user['id'].toString());
+      final int userId = int.parse(user['id'].toString());
+
+      final String userName =
+          user['full_name']?.toString() ?? fullName;
+
+      final String userPhone =
+          user['phone_number']?.toString() ?? widget.phoneNumber;
 
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => HomePage(userId: userId),
+          builder: (context) => HomePage(
+            userId: userId,
+            userName: userName,
+            phoneNumber: userPhone,
+          ),
         ),
         (route) => false,
       );
