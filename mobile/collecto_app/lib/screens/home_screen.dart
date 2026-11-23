@@ -10,6 +10,7 @@ import '../widgets/product_card.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import 'order_history_screen.dart';
+import 'login_screen.dart';
 
 class HomePage extends StatefulWidget {
   final int userId;
@@ -36,12 +37,21 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController searchController =
       TextEditingController();
 
+  int? userId;
+  late String userName;
+  late String phoneNumber;
+
   String searchQuery = '';
   int selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
+
+    userId = widget.userId == 0 ? null : widget.userId;
+    userName = widget.userName;
+    phoneNumber = widget.phoneNumber;
+
     productsFuture = productService.getProducts();
   }
 
@@ -49,6 +59,59 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  Future<bool> ensureLogin() async {
+    if (userId != null) {
+      return true;
+    }
+
+    final user = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(),
+      ),
+    );
+
+    if (!mounted) return false;
+
+    if (user == null) {
+      return false;
+    }
+
+    setState(() {
+      userId = int.parse(user['id'].toString());
+      userName = user['full_name']?.toString() ?? 'کاربر';
+      phoneNumber =
+          user['phone_number']?.toString() ?? '';
+    });
+
+    return true;
+  }
+
+  Future<void> openAccount() async {
+    final loggedIn = await ensureLogin();
+
+    if (!mounted || !loggedIn) return;
+
+    setState(() {
+      selectedIndex = 3;
+    });
+  }
+
+  Future<void> openOrderHistory() async {
+    final loggedIn = await ensureLogin();
+
+    if (!mounted || !loggedIn) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderHistoryScreen(
+          userId: userId!,
+        ),
+      ),
+    );
   }
 
   IconData getCategoryIcon(String category) {
@@ -62,17 +125,6 @@ class _HomePageState extends State<HomePage> {
       default:
         return Icons.watch;
     }
-  }
-
-  void openOrderHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OrderHistoryScreen(
-          userId: widget.userId,
-        ),
-      ),
-    );
   }
 
   List<dynamic> filterProducts(List<dynamic> products) {
@@ -98,7 +150,12 @@ class _HomePageState extends State<HomePage> {
     }).toList();
   }
 
-  void onNavigationSelected(int index) {
+  Future<void> onNavigationSelected(int index) async {
+    if (index == 3) {
+      await openAccount();
+      return;
+    }
+
     setState(() {
       selectedIndex = index;
     });
@@ -160,6 +217,7 @@ class _HomePageState extends State<HomePage> {
                         icon: const Icon(Icons.close),
                         onPressed: () {
                           searchController.clear();
+
                           setState(() {
                             searchQuery = '';
                           });
@@ -250,10 +308,13 @@ class _HomePageState extends State<HomePage> {
                           size: 40,
                           color: Colors.red,
                         ),
+
                         const SizedBox(height: 10),
+
                         const Text(
                           'دریافت محصولات با خطا مواجه شد.',
                         ),
+
                         TextButton(
                           onPressed: () {
                             setState(() {
@@ -363,7 +424,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 18),
 
           Text(
-            widget.userName,
+            userName,
             style: const TextStyle(
               fontSize: 21,
               fontWeight: FontWeight.bold,
@@ -373,7 +434,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 6),
 
           Text(
-            widget.phoneNumber,
+            phoneNumber,
             style: const TextStyle(
               fontSize: 15,
               color: Colors.grey,
@@ -393,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                     color: Color(0xFF245B45),
                   ),
                   title: const Text('نام کاربر'),
-                  subtitle: Text(widget.userName),
+                  subtitle: Text(userName),
                 ),
 
                 const Divider(height: 1),
@@ -404,7 +465,7 @@ class _HomePageState extends State<HomePage> {
                     color: Color(0xFF245B45),
                   ),
                   title: const Text('شماره تلفن'),
-                  subtitle: Text(widget.phoneNumber),
+                  subtitle: Text(phoneNumber),
                 ),
 
                 const Divider(height: 1),
@@ -415,7 +476,7 @@ class _HomePageState extends State<HomePage> {
                     color: Color(0xFF245B45),
                   ),
                   title: const Text('شناسه کاربری'),
-                  subtitle: Text(widget.userId.toString()),
+                  subtitle: Text(userId.toString()),
                 ),
               ],
             ),
@@ -470,6 +531,7 @@ class _HomePageState extends State<HomePage> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF245B45),
           foregroundColor: Colors.white,
+
           title: const Text(
             'کالکتو',
             style: TextStyle(
@@ -477,19 +539,20 @@ class _HomePageState extends State<HomePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
+
           centerTitle: true,
 
           leading: PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
+
             onSelected: (value) {
               if (value == 'orders') {
                 openOrderHistory();
               } else if (value == 'account') {
-                setState(() {
-                  selectedIndex = 3;
-                });
+                openAccount();
               }
             },
+
             itemBuilder: (context) => [
               const PopupMenuItem<String>(
                 value: 'orders',
@@ -501,6 +564,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
+
               const PopupMenuItem<String>(
                 value: 'account',
                 child: Row(
@@ -517,13 +581,14 @@ class _HomePageState extends State<HomePage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.shopping_cart_outlined),
+
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => CartScreen(
                       cartService: cartService,
-                      userId: widget.userId,
+                      userId: userId ?? 0,
                     ),
                   ),
                 );
@@ -539,20 +604,24 @@ class _HomePageState extends State<HomePage> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedIndex,
           onDestinationSelected: onNavigationSelected,
+
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home),
               label: 'خانه',
             ),
+
             NavigationDestination(
               icon: Icon(Icons.category_outlined),
               label: 'دسته‌ها',
             ),
+
             NavigationDestination(
               icon: Icon(Icons.favorite_border),
               label: 'علاقه‌مندی',
             ),
+
             NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),

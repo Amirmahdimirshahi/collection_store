@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
-import 'home_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -40,7 +39,9 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+    });
 
     try {
       final response = await authService.verifyCode(
@@ -55,36 +56,29 @@ class _OtpScreenState extends State<OtpScreen> {
         throw Exception('اطلاعات کاربر از سرور دریافت نشد.');
       }
 
-      final int userId = int.parse(user['id'].toString());
-
-      final String userName =
-          user['full_name']?.toString() ?? fullName;
-
-      final String userPhone =
-          user['phone_number']?.toString() ?? widget.phoneNumber;
+      final userData = <String, dynamic>{
+        'id': int.parse(user['id'].toString()),
+        'full_name': user['full_name']?.toString() ?? fullName,
+        'phone_number':
+            user['phone_number']?.toString() ?? widget.phoneNumber,
+      };
 
       if (!mounted) return;
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(
-            userId: userId,
-            userName: userName,
-            phoneNumber: userPhone,
-          ),
-        ),
-        (route) => false,
-      );
+      Navigator.pop(context, userData);
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(
+          content: Text(e.toString()),
+        ),
       );
     } finally {
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+        });
       }
     }
   }
@@ -98,52 +92,65 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('تأیید شماره موبایل'),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('کد تأیید ارسال‌شده را وارد کنید'),
-            const SizedBox(height: 12),
-            Text(
-              widget.phoneNumber,
-              textDirection: TextDirection.ltr,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'نام و نام خانوادگی',
-                border: OutlineInputBorder(),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('تأیید شماره موبایل'),
+          centerTitle: true,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'کد تأیید ارسال‌شده را وارد کنید',
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: codeController,
-              keyboardType: TextInputType.number,
-              textDirection: TextDirection.ltr,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                labelText: 'کد تأیید ۶ رقمی',
-                border: OutlineInputBorder(),
+
+              const SizedBox(height: 12),
+
+              Text(
+                widget.phoneNumber,
+                textDirection: TextDirection.ltr,
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : verifyCode,
-                child: isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('تأیید و ورود'),
+
+              const SizedBox(height: 24),
+
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'نام و نام خانوادگی',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: codeController,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'کد تأیید ۶ رقمی',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : verifyCode,
+                  child: isLoading
+                      ? const CircularProgressIndicator()
+                      : const Text('تأیید و ورود'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
