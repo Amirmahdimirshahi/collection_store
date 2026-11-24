@@ -4,14 +4,16 @@ import '../services/product_service.dart';
 import 'add_product.dart';
 
 class AdminProductsScreen extends StatefulWidget {
-  const AdminProductsScreen({super.key});
+  final String accessToken;
+
+  const AdminProductsScreen({super.key, required this.accessToken});
 
   @override
   State<AdminProductsScreen> createState() => _AdminProductsScreenState();
 }
 
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
-  final ProductService productService = ProductService();
+  late final ProductService productService;
 
   late Future<List<dynamic>> productsFuture;
 
@@ -20,6 +22,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   @override
   void initState() {
     super.initState();
+
+    productService = ProductService(accessToken: widget.accessToken);
+
     loadProducts();
   }
 
@@ -28,17 +33,16 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   Future<void> refreshProducts() async {
-    setState(() {
-      loadProducts();
-    });
-
+    setState(loadProducts);
     await productsFuture;
   }
 
   Future<void> openAddProduct() async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (context) => const AddProductPage()),
+      MaterialPageRoute(
+        builder: (context) => AddProductPage(accessToken: widget.accessToken),
+      ),
     );
 
     if (result == true && mounted) {
@@ -66,7 +70,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     String category = product['category']?.toString() ?? 'سایر';
 
     final formKey = GlobalKey<FormState>();
-
     final categories = ['سکه', 'اسکناس', 'تمبر', 'سایر'];
 
     if (!categories.contains(category)) {
@@ -153,6 +156,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           ),
                           validator: (value) {
                             final price = int.tryParse(value ?? '');
+
                             if (price == null || price <= 0) {
                               return 'قیمت معتبر وارد کنید';
                             }
@@ -168,6 +172,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           ),
                           validator: (value) {
                             final quantity = int.tryParse(value ?? '');
+
                             if (quantity == null || quantity < 0) {
                               return 'موجودی معتبر وارد کنید';
                             }
@@ -224,11 +229,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                 ),
                               );
                             } catch (e) {
+                              if (!dialogContext.mounted) return;
+
                               setDialogState(() {
                                 isSaving = false;
                               });
-
-                              if (!dialogContext.mounted) return;
 
                               ScaffoldMessenger.of(dialogContext).showSnackBar(
                                 SnackBar(content: Text('خطا در ویرایش: $e')),

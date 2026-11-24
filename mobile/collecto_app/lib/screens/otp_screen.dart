@@ -43,16 +43,22 @@ class _OtpScreenState extends State<OtpScreen> {
       );
 
       final user = response['user'];
+      final accessToken = response['access_token']?.toString();
 
       if (user == null || user['id'] == null) {
         throw Exception('اطلاعات کاربر از سرور دریافت نشد.');
+      }
+
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('توکن ورود از سرور دریافت نشد.');
       }
 
       final userData = <String, dynamic>{
         'id': int.parse(user['id'].toString()),
         'full_name': user['full_name']?.toString() ?? fullName,
         'phone_number': user['phone_number']?.toString() ?? widget.phoneNumber,
-        'role': user['role']?.toString() ?? 'user',
+        'role': user['role']?.toString() ?? 'customer',
+        'access_token': accessToken,
       };
 
       if (!mounted) return;
@@ -77,7 +83,6 @@ class _OtpScreenState extends State<OtpScreen> {
   void dispose() {
     codeController.dispose();
     nameController.dispose();
-
     super.dispose();
   }
 
@@ -104,23 +109,17 @@ class _OtpScreenState extends State<OtpScreen> {
                   size: 75,
                   color: Color(0xFF245B45),
                 ),
-
                 const SizedBox(height: 24),
-
                 const Text(
                   'تأیید شماره موبایل',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-
                 const SizedBox(height: 12),
-
                 const Text(
                   'کد تأیید ارسال‌شده را وارد کنید.',
                   style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
-
                 const SizedBox(height: 12),
-
                 Text(
                   widget.phoneNumber,
                   textDirection: TextDirection.ltr,
@@ -129,9 +128,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
                 TextField(
                   controller: nameController,
                   textInputAction: TextInputAction.next,
@@ -143,9 +140,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
                 TextField(
                   controller: codeController,
                   keyboardType: TextInputType.number,
@@ -161,9 +156,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 SizedBox(
                   width: double.infinity,
                   height: 52,

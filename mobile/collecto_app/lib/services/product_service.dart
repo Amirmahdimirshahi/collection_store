@@ -4,6 +4,22 @@ import 'package:http/http.dart' as http;
 
 class ProductService {
   static const String baseUrl = 'http://10.91.225.140:8000';
+
+  final String? accessToken;
+
+  ProductService({this.accessToken});
+
+  Map<String, String> get authHeaders {
+    if (accessToken == null || accessToken!.isEmpty) {
+      throw Exception('توکن ورود مدیر موجود نیست. دوباره وارد شوید.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    };
+  }
+
   Future<List<dynamic>> getProducts() async {
     final response = await http.get(Uri.parse('$baseUrl/products'));
 
@@ -23,7 +39,7 @@ class ProductService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/products'),
-      headers: {'Content-Type': 'application/json'},
+      headers: authHeaders,
       body: jsonEncode({
         'name': name,
         'category': category,
@@ -48,7 +64,7 @@ class ProductService {
   }) async {
     final response = await http.put(
       Uri.parse('$baseUrl/products/$productId'),
-      headers: {'Content-Type': 'application/json'},
+      headers: authHeaders,
       body: jsonEncode({
         'name': name,
         'category': category,
@@ -66,6 +82,7 @@ class ProductService {
   Future<void> deleteProduct(int productId) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/products/$productId'),
+      headers: authHeaders,
     );
 
     if (response.statusCode != 200 && response.statusCode != 204) {

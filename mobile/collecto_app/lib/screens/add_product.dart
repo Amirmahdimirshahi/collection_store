@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/product_service.dart';
 
 class AddProductPage extends StatefulWidget {
-  const AddProductPage({super.key});
+  final String accessToken;
+
+  const AddProductPage({super.key, required this.accessToken});
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -17,10 +19,16 @@ class _AddProductPageState extends State<AddProductPage> {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
 
-  final ProductService productService = ProductService();
+  late final ProductService productService;
 
   String selectedCategory = 'سکه';
   bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    productService = ProductService(accessToken: widget.accessToken);
+  }
 
   Future<void> saveProduct() async {
     if (!_formKey.currentState!.validate()) return;
@@ -99,7 +107,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-
                 TextFormField(
                   controller: nameController,
                   decoration: const InputDecoration(
@@ -115,7 +122,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 DropdownButtonFormField<String>(
                   initialValue: selectedCategory,
                   decoration: const InputDecoration(
@@ -138,7 +144,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: descriptionController,
                   maxLines: 3,
@@ -149,7 +154,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: priceController,
                   keyboardType: TextInputType.number,
@@ -168,7 +172,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: quantityController,
                   keyboardType: TextInputType.number,
@@ -187,7 +190,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   },
                 ),
                 const SizedBox(height: 24),
-
                 ElevatedButton(
                   onPressed: isLoading ? null : saveProduct,
                   style: ElevatedButton.styleFrom(

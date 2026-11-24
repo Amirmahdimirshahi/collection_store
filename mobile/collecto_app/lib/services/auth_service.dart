@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 class AuthService {
   static const String baseUrl = 'http://10.91.225.140:8000';
+
   Future<void> sendCode(String phoneNumber) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/send-code'),
@@ -31,10 +32,15 @@ class AuthService {
       }),
     );
 
+    final responseData = jsonDecode(response.body);
+
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('کد تأیید اشتباه است یا اعتبار آن تمام شده است');
+      return Map<String, dynamic>.from(responseData);
     }
+
+    throw Exception(
+      responseData['detail']?.toString() ??
+          'کد تأیید اشتباه است یا اعتبار آن تمام شده است',
+    );
   }
 }

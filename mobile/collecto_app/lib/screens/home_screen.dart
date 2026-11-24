@@ -41,6 +41,10 @@ class _HomePageState extends State<HomePage> {
   late String phoneNumber;
 
   String userRole = 'guest';
+
+  // توکن احراز هویت کاربر
+  String accessToken = '';
+
   String searchQuery = '';
 
   int selectedIndex = 0;
@@ -64,12 +68,22 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  // دریافت اطلاعات کاربر و توکن پس از ورود
   void updateUser(Map<String, dynamic> user) {
     setState(() {
       userId = int.parse(user['id'].toString());
+
       userName = user['full_name']?.toString() ?? 'کاربر';
+
       phoneNumber = user['phone_number']?.toString() ?? '';
+
       userRole = user['role']?.toString() ?? 'user';
+
+      final newToken = user['access_token']?.toString() ?? '';
+
+      if (newToken.isNotEmpty) {
+        accessToken = newToken;
+      }
     });
   }
 
@@ -88,6 +102,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     updateUser(user);
+
     return true;
   }
 
@@ -114,6 +129,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ورود به پنل مدیریت با ارسال توکن JWT
   Future<void> openAdminPanel() async {
     if (userRole != 'admin') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,9 +140,20 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    if (accessToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('توکن ورود مدیر موجود نیست. لطفاً دوباره وارد شوید.'),
+        ),
+      );
+      return;
+    }
+
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AdminProductsScreen()),
+      MaterialPageRoute(
+        builder: (context) => AdminProductsScreen(accessToken: accessToken),
+      ),
     );
 
     if (!mounted) return;
@@ -158,7 +185,9 @@ class _HomePageState extends State<HomePage> {
 
     return products.where((product) {
       final name = product['name']?.toString().toLowerCase() ?? '';
+
       final category = product['category']?.toString().toLowerCase() ?? '';
+
       final description =
           product['description']?.toString().toLowerCase() ?? '';
 
@@ -314,6 +343,7 @@ class _HomePageState extends State<HomePage> {
                 }
 
                 final allProducts = snapshot.data ?? [];
+
                 final products = filterProducts(allProducts);
 
                 if (products.isEmpty) {
