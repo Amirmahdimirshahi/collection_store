@@ -1,8 +1,9 @@
-
 import 'package:flutter/material.dart';
 
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
+
+import 'login_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final CartService cartService;
@@ -23,27 +24,40 @@ class _CartScreenState extends State<CartScreen> {
 
   bool isLoading = false;
 
+  Map<String, dynamic>? loggedInUser;
+
   Future<void> submitOrder() async {
     final items = widget.cartService.items;
 
-    if (items.isEmpty) {
-      return;
-    }
+    if (items.isEmpty) return;
 
     setState(() {
       isLoading = true;
     });
 
     try {
+      int currentUserId = widget.userId;
+
+      if (currentUserId == 0) {
+        final user = await Navigator.push<Map<String, dynamic>>(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+
+        if (!mounted) return;
+
+        if (user == null) return;
+
+        loggedInUser = user;
+        currentUserId = int.parse(user['id'].toString());
+      }
+
       final orderItems = items.map((item) {
-        return {
-          'product_id': item.product.id,
-          'quantity': item.quantity,
-        };
+        return {'product_id': item.product.id, 'quantity': item.quantity};
       }).toList();
 
       final response = await orderService.createOrder(
-        userId: widget.userId,
+        userId: currentUserId,
         items: orderItems,
       );
 
@@ -56,14 +70,12 @@ class _CartScreenState extends State<CartScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'سفارش شما با موفقیت ثبت شد. شماره سفارش: $orderId',
-          ),
+          content: Text('سفارش شما با موفقیت ثبت شد. شماره سفارش: $orderId'),
           backgroundColor: Colors.green,
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, loggedInUser);
     } catch (error) {
       if (!mounted) return;
 
@@ -86,11 +98,13 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6F4),
+
       appBar: AppBar(
         title: const Text('سبد خرید'),
         backgroundColor: const Color(0xFF245B45),
         foregroundColor: Colors.white,
       ),
+
       body: AnimatedBuilder(
         animation: widget.cartService,
         builder: (context, child) {
@@ -107,10 +121,7 @@ class _CartScreenState extends State<CartScreen> {
                     color: Colors.grey,
                   ),
                   SizedBox(height: 16),
-                  Text(
-                    'سبد خرید شما خالی است',
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  Text('سبد خرید شما خالی است', style: TextStyle(fontSize: 18)),
                 ],
               ),
             );
@@ -136,11 +147,12 @@ class _CartScreenState extends State<CartScreen> {
                               size: 40,
                               color: Color(0xFF245B45),
                             ),
+
                             const SizedBox(width: 12),
+
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     item.product.name,
@@ -149,20 +161,20 @@ class _CartScreenState extends State<CartScreen> {
                                       fontSize: 16,
                                     ),
                                   ),
+
                                   const SizedBox(height: 6),
-                                  Text(
-                                    'قیمت: ${item.product.price} تومان',
-                                  ),
-                                  Text(
-                                    'جمع: ${item.totalPrice} تومان',
-                                  ),
+
+                                  Text('قیمت: ${item.product.price} تومان'),
+
+                                  Text('جمع: ${item.totalPrice} تومان'),
+
                                   const SizedBox(height: 8),
+
                                   Row(
                                     children: [
                                       IconButton(
                                         onPressed: () {
-                                          widget.cartService
-                                              .decreaseQuantity(
+                                          widget.cartService.decreaseQuantity(
                                             item.product.id,
                                           );
                                         },
@@ -170,7 +182,9 @@ class _CartScreenState extends State<CartScreen> {
                                           Icons.remove_circle_outline,
                                         ),
                                       ),
+
                                       Text('${item.quantity}'),
+
                                       IconButton(
                                         onPressed:
                                             item.quantity <
@@ -178,8 +192,8 @@ class _CartScreenState extends State<CartScreen> {
                                             ? () {
                                                 widget.cartService
                                                     .increaseQuantity(
-                                                  item.product.id,
-                                                );
+                                                      item.product.id,
+                                                    );
                                               }
                                             : null,
                                         icon: const Icon(
@@ -191,6 +205,7 @@ class _CartScreenState extends State<CartScreen> {
                                 ],
                               ),
                             ),
+
                             IconButton(
                               onPressed: () {
                                 widget.cartService.removeProduct(
@@ -209,31 +224,31 @@ class _CartScreenState extends State<CartScreen> {
                   },
                 ),
               ),
+
               Container(
                 padding: const EdgeInsets.all(20),
                 color: Colors.white,
                 child: Column(
                   children: [
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'تعداد کل محصولات:',
                           style: TextStyle(fontSize: 16),
                         ),
+
                         Text(
                           '${widget.cartService.itemCount}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 12),
+
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'مبلغ قابل پرداخت:',
@@ -242,6 +257,7 @@ class _CartScreenState extends State<CartScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                         Text(
                           '${widget.cartService.totalPrice} تومان',
                           style: const TextStyle(
@@ -252,7 +268,9 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 16),
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(

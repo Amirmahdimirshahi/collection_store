@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
@@ -19,16 +18,10 @@ class CollectionStore extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Roboto',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF245B45),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF245B45)),
       ),
 
-      home: const HomePage(
-        userId: 0,
-        userName: 'مهمان',
-        phoneNumber: '',
-      ),
+      home: const HomePage(userId: 0, userName: 'مهمان', phoneNumber: ''),
     );
   }
 }

@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  static const String baseUrl = 'http://10.137.47.140:8000';
-
+  static const String baseUrl = 'http://10.91.225.140:8000';
   Future<void> sendCode(String phoneNumber) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/send-code'),

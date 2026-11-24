@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
@@ -12,8 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController phoneController =
-      TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
 
   final AuthService authService = AuthService();
 
@@ -24,9 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!RegExp(r'^09\d{9}$').hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('شماره موبایل معتبر وارد کنید'),
-        ),
+        const SnackBar(content: Text('شماره موبایل معتبر وارد کنید')),
       );
       return;
     }
@@ -57,11 +53,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) {
         setState(() {
@@ -82,10 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('ورود به کالکتو'),
-          centerTitle: true,
-        ),
+        appBar: AppBar(title: const Text('ورود به کالکتو'), centerTitle: true),
         body: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -101,17 +91,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const Text(
                 'به کالکتو خوش آمدید',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 12),
 
-              const Text(
-                'شماره موبایل خود را وارد کنید',
-              ),
+              const Text('شماره موبایل خود را وارد کنید'),
 
               const SizedBox(height: 24),
 

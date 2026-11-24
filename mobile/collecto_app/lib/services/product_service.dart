@@ -3,16 +3,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ProductService {
-  static const String baseUrl = 'http://10.137.47.140:8000';
-
+  static const String baseUrl = 'http://10.91.225.140:8000';
   Future<List<dynamic>> getProducts() async {
     final response = await http.get(Uri.parse('$baseUrl/products'));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('خطا در دریافت محصولات');
+      return jsonDecode(response.body) as List<dynamic>;
     }
+
+    throw Exception('خطا در دریافت محصولات: ${response.body}');
   }
 
   Future<void> addProduct({
@@ -35,9 +34,42 @@ class ProductService {
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception(
-        'خطا در ثبت محصول: ${response.statusCode} - ${response.body}',
-      );
+      throw Exception('خطا در ثبت محصول: ${response.body}');
+    }
+  }
+
+  Future<void> updateProduct({
+    required int productId,
+    required String name,
+    required String category,
+    required String description,
+    required int price,
+    required int quantity,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/products/$productId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'category': category,
+        'description': description,
+        'price': price,
+        'quantity': quantity,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('خطا در ویرایش محصول: ${response.body}');
+    }
+  }
+
+  Future<void> deleteProduct(int productId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/products/$productId'),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('خطا در حذف محصول: ${response.body}');
     }
   }
 }

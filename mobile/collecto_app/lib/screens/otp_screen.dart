@@ -1,26 +1,20 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
 
-  const OtpScreen({
-    super.key,
-    required this.phoneNumber,
-  });
+  const OtpScreen({super.key, required this.phoneNumber});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final TextEditingController codeController =
-      TextEditingController();
-
-  final TextEditingController nameController =
-      TextEditingController();
+  final TextEditingController codeController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
 
   final AuthService authService = AuthService();
 
@@ -30,11 +24,9 @@ class _OtpScreenState extends State<OtpScreen> {
     final code = codeController.text.trim();
     final fullName = nameController.text.trim();
 
-    if (code.length != 6 || fullName.isEmpty) {
+    if (fullName.isEmpty || code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('نام و کد ۶ رقمی را وارد کنید'),
-        ),
+        const SnackBar(content: Text('نام و کد تأیید ۶ رقمی را وارد کنید.')),
       );
       return;
     }
@@ -59,8 +51,8 @@ class _OtpScreenState extends State<OtpScreen> {
       final userData = <String, dynamic>{
         'id': int.parse(user['id'].toString()),
         'full_name': user['full_name']?.toString() ?? fullName,
-        'phone_number':
-            user['phone_number']?.toString() ?? widget.phoneNumber,
+        'phone_number': user['phone_number']?.toString() ?? widget.phoneNumber,
+        'role': user['role']?.toString() ?? 'user',
       };
 
       if (!mounted) return;
@@ -70,9 +62,7 @@ class _OtpScreenState extends State<OtpScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted) {
@@ -87,6 +77,7 @@ class _OtpScreenState extends State<OtpScreen> {
   void dispose() {
     codeController.dispose();
     nameController.dispose();
+
     super.dispose();
   }
 
@@ -95,61 +86,116 @@ class _OtpScreenState extends State<OtpScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: const Color(0xFFF7F7F3),
         appBar: AppBar(
           title: const Text('تأیید شماره موبایل'),
           centerTitle: true,
+          backgroundColor: const Color(0xFF245B45),
+          foregroundColor: Colors.white,
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'کد تأیید ارسال‌شده را وارد کنید',
-              ),
-
-              const SizedBox(height: 12),
-
-              Text(
-                widget.phoneNumber,
-                textDirection: TextDirection.ltr,
-              ),
-
-              const SizedBox(height: 24),
-
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'نام و نام خانوادگی',
-                  border: OutlineInputBorder(),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.verified_user_outlined,
+                  size: 75,
+                  color: Color(0xFF245B45),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-              TextField(
-                controller: codeController,
-                keyboardType: TextInputType.number,
-                textDirection: TextDirection.ltr,
-                maxLength: 6,
-                decoration: const InputDecoration(
-                  labelText: 'کد تأیید ۶ رقمی',
-                  border: OutlineInputBorder(),
+                const Text(
+                  'تأیید شماره موبایل',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : verifyCode,
-                  child: isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text('تأیید و ورود'),
+                const Text(
+                  'کد تأیید ارسال‌شده را وارد کنید.',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 12),
+
+                Text(
+                  widget.phoneNumber,
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                TextField(
+                  controller: nameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'نام و نام خانوادگی',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                TextField(
+                  controller: codeController,
+                  keyboardType: TextInputType.number,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.center,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'کد تأیید ۶ رقمی',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : verifyCode,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF245B45),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 25,
+                            height: 25,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'تأیید و ورود',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

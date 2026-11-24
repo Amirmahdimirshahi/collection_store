@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../services/order_service.dart';
@@ -6,18 +5,13 @@ import '../services/order_service.dart';
 class OrderHistoryScreen extends StatefulWidget {
   final int userId;
 
-  const OrderHistoryScreen({
-    super.key,
-    required this.userId,
-  });
+  const OrderHistoryScreen({super.key, required this.userId});
 
   @override
-  State<OrderHistoryScreen> createState() =>
-      _OrderHistoryScreenState();
+  State<OrderHistoryScreen> createState() => _OrderHistoryScreenState();
 }
 
-class _OrderHistoryScreenState
-    extends State<OrderHistoryScreen> {
+class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final OrderService orderService = OrderService();
 
   late Future<List<Map<String, dynamic>>> ordersFuture;
@@ -29,9 +23,7 @@ class _OrderHistoryScreenState
   }
 
   void loadOrders() {
-    ordersFuture = orderService.getUserOrders(
-      userId: widget.userId,
-    );
+    ordersFuture = orderService.getUserOrders(userId: widget.userId);
   }
 
   String formatPrice(dynamic price) {
@@ -57,20 +49,14 @@ class _OrderHistoryScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تاریخچه سفارش‌ها'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('تاریخچه سفارش‌ها'), centerTitle: true),
 
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: ordersFuture,
 
         builder: (context, snapshot) {
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
@@ -78,11 +64,7 @@ class _OrderHistoryScreenState
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 55,
-                    color: Colors.red,
-                  ),
+                  const Icon(Icons.error_outline, size: 55, color: Colors.red),
                   const SizedBox(height: 12),
                   const Text('دریافت سفارش‌ها ناموفق بود.'),
                   const SizedBox(height: 12),
@@ -147,13 +129,11 @@ class _OrderHistoryScreenState
                     padding: const EdgeInsets.all(16),
 
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                           children: [
                             Text(
@@ -165,9 +145,7 @@ class _OrderHistoryScreenState
                             ),
 
                             Text(
-                              getStatusText(
-                                order['status'].toString(),
-                              ),
+                              getStatusText(order['status'].toString()),
                               style: const TextStyle(
                                 color: Colors.orange,
                                 fontSize: 12,
@@ -180,24 +158,17 @@ class _OrderHistoryScreenState
 
                         ...items.map((item) {
                           return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: 10,
-                            ),
+                            padding: const EdgeInsets.only(bottom: 10),
 
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                               children: [
                                 Expanded(
-                                  child: Text(
-                                    item['product_name'].toString(),
-                                  ),
+                                  child: Text(item['product_name'].toString()),
                                 ),
 
-                                Text(
-                                  'تعداد: ${item['quantity']}',
-                                ),
+                                Text('تعداد: ${item['quantity']}'),
                               ],
                             ),
                           );
@@ -206,15 +177,12 @@ class _OrderHistoryScreenState
                         const Divider(height: 24),
 
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                           children: [
                             const Text(
                               'مبلغ کل:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
 
                             Text(
