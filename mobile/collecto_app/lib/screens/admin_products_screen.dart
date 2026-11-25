@@ -14,7 +14,6 @@ class AdminProductsScreen extends StatefulWidget {
 
 class _AdminProductsScreenState extends State<AdminProductsScreen> {
   late final ProductService productService;
-
   late Future<List<dynamic>> productsFuture;
 
   bool isDeleting = false;
@@ -33,7 +32,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   Future<void> refreshProducts() async {
-    setState(loadProducts);
+    setState(() {
+      loadProducts();
+    });
+
     await productsFuture;
   }
 
@@ -45,221 +47,50 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       ),
     );
 
-    if (result == true && mounted) {
-      setState(loadProducts);
+    if (!mounted) return;
+
+    if (result == true) {
+      setState(() {
+        loadProducts();
+      });
     }
   }
 
   Future<void> editProduct(Map<String, dynamic> product) async {
-    final nameController = TextEditingController(
-      text: product['name']?.toString() ?? '',
-    );
-
-    final descriptionController = TextEditingController(
-      text: product['description']?.toString() ?? '',
-    );
-
-    final priceController = TextEditingController(
-      text: product['price']?.toString() ?? '',
-    );
-
-    final quantityController = TextEditingController(
-      text: product['quantity']?.toString() ?? '',
-    );
-
-    String category = product['category']?.toString() ?? 'سایر';
-
-    final formKey = GlobalKey<FormState>();
-    final categories = ['سکه', 'اسکناس', 'تمبر', 'سایر'];
-
-    if (!categories.contains(category)) {
-      category = 'سایر';
-    }
-
     final productId = int.tryParse(product['id'].toString());
 
     if (productId == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('شناسه محصول معتبر نیست.')));
-
-      nameController.dispose();
-      descriptionController.dispose();
-      priceController.dispose();
-      quantityController.dispose();
       return;
     }
 
-    await showDialog<void>(
+    final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        bool isSaving = false;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: AlertDialog(
-                title: const Text('ویرایش محصول'),
-                content: SingleChildScrollView(
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextFormField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'نام محصول',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'نام محصول را وارد کنید';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: category,
-                          decoration: const InputDecoration(
-                            labelText: 'دسته‌بندی',
-                          ),
-                          items: categories.map((item) {
-                            return DropdownMenuItem(
-                              value: item,
-                              child: Text(item),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() {
-                                category = value;
-                              });
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: descriptionController,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'توضیحات',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: priceController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'قیمت (تومان)',
-                          ),
-                          validator: (value) {
-                            final price = int.tryParse(value ?? '');
-
-                            if (price == null || price <= 0) {
-                              return 'قیمت معتبر وارد کنید';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: quantityController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'موجودی',
-                          ),
-                          validator: (value) {
-                            final quantity = int.tryParse(value ?? '');
-
-                            if (quantity == null || quantity < 0) {
-                              return 'موجودی معتبر وارد کنید';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: isSaving
-                        ? null
-                        : () => Navigator.pop(dialogContext),
-                    child: const Text('انصراف'),
-                  ),
-                  ElevatedButton(
-                    onPressed: isSaving
-                        ? null
-                        : () async {
-                            if (!formKey.currentState!.validate()) {
-                              return;
-                            }
-
-                            setDialogState(() {
-                              isSaving = true;
-                            });
-
-                            try {
-                              await productService.updateProduct(
-                                productId: productId,
-                                name: nameController.text.trim(),
-                                category: category,
-                                description: descriptionController.text.trim(),
-                                price: int.parse(priceController.text.trim()),
-                                quantity: int.parse(
-                                  quantityController.text.trim(),
-                                ),
-                              );
-
-                              if (!dialogContext.mounted) return;
-
-                              Navigator.pop(dialogContext);
-
-                              if (!mounted) return;
-
-                              setState(loadProducts);
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('محصول ویرایش شد.'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } catch (e) {
-                              if (!dialogContext.mounted) return;
-
-                              setDialogState(() {
-                                isSaving = false;
-                              });
-
-                              ScaffoldMessenger.of(dialogContext).showSnackBar(
-                                SnackBar(content: Text('خطا در ویرایش: $e')),
-                              );
-                            }
-                          },
-                    child: isSaving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('ذخیره تغییرات'),
-                  ),
-                ],
-              ),
-            );
-          },
+        return EditProductDialog(
+          product: product,
+          productId: productId,
+          productService: productService,
         );
       },
     );
 
-    nameController.dispose();
-    descriptionController.dispose();
-    priceController.dispose();
-    quantityController.dispose();
+    if (!mounted) return;
+
+    if (result == true) {
+      setState(() {
+        loadProducts();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('محصول ویرایش شد.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   Future<void> deleteProduct(Map<String, dynamic> product) async {
@@ -280,11 +111,15 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           content: Text('آیا از حذف «${product['name']}» اطمینان دارید؟'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
               child: const Text('انصراف'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
               child: const Text('حذف', style: TextStyle(color: Colors.red)),
             ),
           ],
@@ -292,7 +127,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() {
       isDeleting = true;
@@ -303,7 +138,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
       if (!mounted) return;
 
-      setState(loadProducts);
+      setState(() {
+        loadProducts();
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -405,7 +242,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           actions: [
             IconButton(
               onPressed: () {
-                setState(loadProducts);
+                setState(() {
+                  loadProducts();
+                });
               },
               icon: const Icon(Icons.refresh),
               tooltip: 'بروزرسانی',
@@ -440,7 +279,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     const Text('دریافت محصولات ناموفق بود.'),
                     TextButton(
                       onPressed: () {
-                        setState(loadProducts);
+                        setState(() {
+                          loadProducts();
+                        });
                       },
                       child: const Text('تلاش مجدد'),
                     ),
@@ -471,6 +312,226 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class EditProductDialog extends StatefulWidget {
+  final Map<String, dynamic> product;
+  final int productId;
+  final ProductService productService;
+
+  const EditProductDialog({
+    super.key,
+    required this.product,
+    required this.productId,
+    required this.productService,
+  });
+
+  @override
+  State<EditProductDialog> createState() => _EditProductDialogState();
+}
+
+class _EditProductDialogState extends State<EditProductDialog> {
+  late final TextEditingController nameController;
+  late final TextEditingController descriptionController;
+  late final TextEditingController priceController;
+  late final TextEditingController quantityController;
+
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+  final List<String> categories = ['سکه', 'اسکناس', 'تمبر', 'سایر'];
+
+  late String category;
+
+  bool isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    nameController = TextEditingController(
+      text: widget.product['name']?.toString() ?? '',
+    );
+
+    descriptionController = TextEditingController(
+      text: widget.product['description']?.toString() ?? '',
+    );
+
+    priceController = TextEditingController(
+      text: widget.product['price']?.toString() ?? '',
+    );
+
+    quantityController = TextEditingController(
+      text: widget.product['quantity']?.toString() ?? '',
+    );
+
+    category = widget.product['category']?.toString() ?? 'سایر';
+
+    if (!categories.contains(category)) {
+      category = 'سایر';
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    descriptionController.dispose();
+    priceController.dispose();
+    quantityController.dispose();
+
+    super.dispose();
+  }
+
+  // ذخیره تغییرات محصول
+  Future<void> saveProduct() async {
+    if (isSaving) return;
+
+    if (!formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      isSaving = true;
+    });
+
+    try {
+      await widget.productService.updateProduct(
+        productId: widget.productId,
+        name: nameController.text.trim(),
+        category: category,
+        description: descriptionController.text.trim(),
+        price: int.parse(priceController.text.trim()),
+        quantity: int.parse(quantityController.text.trim()),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('خطا در ویرایش: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('ویرایش محصول'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'نام محصول'),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'نام محصول را وارد کنید';
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                DropdownButtonFormField<String>(
+                  initialValue: category,
+                  decoration: const InputDecoration(labelText: 'دسته‌بندی'),
+                  items: categories.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(item),
+                    );
+                  }).toList(),
+                  onChanged: isSaving
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() {
+                              category = value;
+                            });
+                          }
+                        },
+                ),
+
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'توضیحات'),
+                ),
+
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'قیمت (تومان)'),
+                  validator: (value) {
+                    final price = int.tryParse(value ?? '');
+
+                    if (price == null || price <= 0) {
+                      return 'قیمت معتبر وارد کنید';
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: quantityController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'موجودی'),
+                  validator: (value) {
+                    final quantity = int.tryParse(value ?? '');
+
+                    if (quantity == null || quantity < 0) {
+                      return 'موجودی معتبر وارد کنید';
+                    }
+
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: isSaving
+                ? null
+                : () {
+                    Navigator.pop(context, false);
+                  },
+            child: const Text('انصراف'),
+          ),
+          ElevatedButton(
+            onPressed: isSaving ? null : saveProduct,
+            child: isSaving
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('ذخیره تغییرات'),
+          ),
+        ],
       ),
     );
   }

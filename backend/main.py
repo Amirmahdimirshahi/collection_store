@@ -15,7 +15,9 @@ from database import (
     create_order,
     get_user_by_phone,
     get_user_by_id,
-    get_user_orders
+    get_user_orders,
+    get_all_orders,
+    update_order_status,
 )
 
 
@@ -54,8 +56,11 @@ class OrderItemRequest(BaseModel):
 
 
 class CreateOrderRequest(BaseModel):
-    user_id: int
     items: list[OrderItemRequest]
+
+
+class UpdateOrderStatusRequest(BaseModel):
+    status: str
 
 
 def get_current_user(
@@ -244,7 +249,10 @@ def read_current_user(
 
 
 @app.post("/orders")
-def create_new_order(request: CreateOrderRequest):
+def create_new_order(
+    request: CreateOrderRequest,
+    current_user: dict = Depends(get_current_user)
+):
     if not request.items:
         raise HTTPException(
             status_code=400,
@@ -253,7 +261,7 @@ def create_new_order(request: CreateOrderRequest):
 
     try:
         order = create_order(
-            request.user_id,
+            current_user["id"],
             [
                 {
                     "product_id": item.product_id,
@@ -276,15 +284,56 @@ def create_new_order(request: CreateOrderRequest):
 
 
 @app.get("/users/{user_id}/orders")
-def read_user_orders(user_id: int):
-    user = get_user_by_id(user_id)
-
-    if not user:
+def read_user_orders(
+    user_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    if user_id != current_user["id"]:
         raise HTTPException(
-            status_code=404,
-            detail="کاربر پیدا نشد."
+            status_code=403,
+            detail="شما اجازه مشاهده سفارش‌های این کاربر را ندارید."
         )
 
     return {
-        "orders": get_user_orders(user_id)
+        "orders": get_user_orders(current_user["id"])
     }
+
+
+@app.get("/admin/orders")
+def read_all_orders(
+    admin: dict = Depends(get_admin_user)
+):
+    return {
+        "orders": get_all_orders()
+    }
+
+
+@app.put("/admin/orders/{order_id}/status")
+def change_order_status(
+    order_id: int,
+    request: UpdateOrderStatusRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    try:
+        updated = update_order_status(
+            order_id,
+            request.status
+        )
+
+        if not updated:
+            raise HTTPException(
+                status_code=404,
+                detail="سفارش پیدا نشد."
+            )
+
+        return {
+            "message": "وضعیت سفارش با موفقیت تغییر کرد.",
+            "order_id": order_id,
+            "status": request.status
+        }
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )

@@ -11,6 +11,7 @@ import 'cart_screen.dart';
 import 'order_history_screen.dart';
 import 'login_screen.dart';
 import 'admin_products_screen.dart';
+import 'admin_orders_screen.dart';
 
 class HomePage extends StatefulWidget {
   final int userId;
@@ -41,10 +42,7 @@ class _HomePageState extends State<HomePage> {
   late String phoneNumber;
 
   String userRole = 'guest';
-
-  // توکن احراز هویت کاربر
   String accessToken = '';
-
   String searchQuery = '';
 
   int selectedIndex = 0;
@@ -68,15 +66,11 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // دریافت اطلاعات کاربر و توکن پس از ورود
   void updateUser(Map<String, dynamic> user) {
     setState(() {
       userId = int.parse(user['id'].toString());
-
       userName = user['full_name']?.toString() ?? 'کاربر';
-
       phoneNumber = user['phone_number']?.toString() ?? '';
-
       userRole = user['role']?.toString() ?? 'user';
 
       final newToken = user['access_token']?.toString() ?? '';
@@ -88,7 +82,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<bool> ensureLogin() async {
-    if (userId != null) {
+    if (userId != null && accessToken.isNotEmpty) {
       return true;
     }
 
@@ -103,7 +97,7 @@ class _HomePageState extends State<HomePage> {
 
     updateUser(user);
 
-    return true;
+    return accessToken.isNotEmpty;
   }
 
   Future<void> openAccount() async {
@@ -116,6 +110,43 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('خروج از حساب'),
+        content: const Text(
+          'آیا مطمئن هستید که می‌خواهید از حساب خود خارج شوید؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('انصراف'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('خروج'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() {
+      userId = null;
+      userName = 'مهمان';
+      phoneNumber = '';
+      userRole = 'guest';
+      accessToken = '';
+      selectedIndex = 0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('با موفقیت از حساب خارج شدید.')),
+    );
+  }
+
   Future<void> openOrderHistory() async {
     final loggedIn = await ensureLogin();
 
@@ -124,12 +155,12 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => OrderHistoryScreen(userId: userId!),
+        builder: (context) =>
+            OrderHistoryScreen(userId: userId!, accessToken: accessToken),
       ),
     );
   }
 
-  // ورود به پنل مدیریت با ارسال توکن JWT
   Future<void> openAdminPanel() async {
     if (userRole != 'admin') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,6 +194,31 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> openAdminOrders() async {
+    if (userRole != 'admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('شما اجازه ورود به این بخش را ندارید.')),
+      );
+      return;
+    }
+
+    if (accessToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('توکن ورود مدیر موجود نیست. لطفاً دوباره وارد شوید.'),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminOrdersScreen(accessToken: accessToken),
+      ),
+    );
+  }
+
   IconData getCategoryIcon(String category) {
     switch (category) {
       case 'سکه':
@@ -185,9 +241,7 @@ class _HomePageState extends State<HomePage> {
 
     return products.where((product) {
       final name = product['name']?.toString().toLowerCase() ?? '';
-
       final category = product['category']?.toString().toLowerCase() ?? '';
-
       final description =
           product['description']?.toString().toLowerCase() ?? '';
 
@@ -229,16 +283,12 @@ class _HomePageState extends State<HomePage> {
               'به دنیای کلکسیون خوش آمدید',
               style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 8),
-
             const Text(
               'کالاهای خاص، تاریخی و ارزشمند را کشف کنید.',
               style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
-
             const SizedBox(height: 20),
-
             TextField(
               controller: searchController,
               onChanged: (value) {
@@ -269,16 +319,12 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 25),
-
             const Text(
               'دسته‌بندی محصولات',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 14),
-
             SizedBox(
               height: 100,
               child: ListView(
@@ -291,16 +337,12 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 25),
-
             Text(
               searchQuery.isEmpty ? 'محصولات منتخب' : 'نتایج جستجو',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 14),
-
             FutureBuilder<List<dynamic>>(
               future: productsFuture,
               builder: (context, snapshot) {
@@ -324,11 +366,8 @@ class _HomePageState extends State<HomePage> {
                           size: 40,
                           color: Colors.red,
                         ),
-
                         const SizedBox(height: 10),
-
                         const Text('دریافت محصولات با خطا مواجه شد.'),
-
                         TextButton(
                           onPressed: () {
                             setState(() {
@@ -343,7 +382,6 @@ class _HomePageState extends State<HomePage> {
                 }
 
                 final allProducts = snapshot.data ?? [];
-
                 final products = filterProducts(allProducts);
 
                 if (products.isEmpty) {
@@ -374,9 +412,7 @@ class _HomePageState extends State<HomePage> {
                     final product = products[index] as Map<String, dynamic>;
 
                     final name = product['name']?.toString() ?? 'بدون نام';
-
                     final category = product['category']?.toString() ?? '';
-
                     final price = product['price']?.toString() ?? 'نامشخص';
 
                     final productModel = ProductModel.fromJson(
@@ -415,29 +451,22 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           const SizedBox(height: 25),
-
           const CircleAvatar(
             radius: 48,
             backgroundColor: Color(0xFF245B45),
             child: Icon(Icons.person, size: 55, color: Colors.white),
           ),
-
           const SizedBox(height: 18),
-
           Text(
             userName,
             style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
           ),
-
           const SizedBox(height: 6),
-
           Text(
             phoneNumber,
             style: const TextStyle(fontSize: 15, color: Colors.grey),
           ),
-
           const SizedBox(height: 10),
-
           Chip(
             avatar: Icon(
               userRole == 'admin'
@@ -449,9 +478,7 @@ class _HomePageState extends State<HomePage> {
             backgroundColor: const Color(0xFF245B45),
             labelStyle: const TextStyle(color: Colors.white),
           ),
-
           const SizedBox(height: 25),
-
           Card(
             elevation: 1,
             color: Colors.white,
@@ -465,9 +492,7 @@ class _HomePageState extends State<HomePage> {
                   title: const Text('نام کاربر'),
                   subtitle: Text(userName),
                 ),
-
                 const Divider(height: 1),
-
                 ListTile(
                   leading: const Icon(
                     Icons.phone_outlined,
@@ -476,9 +501,7 @@ class _HomePageState extends State<HomePage> {
                   title: const Text('شماره تلفن'),
                   subtitle: Text(phoneNumber),
                 ),
-
                 const Divider(height: 1),
-
                 ListTile(
                   leading: const Icon(
                     Icons.badge_outlined,
@@ -490,9 +513,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
-
           Card(
             elevation: 1,
             color: Colors.white,
@@ -513,7 +534,6 @@ class _HomePageState extends State<HomePage> {
 
           if (userRole == 'admin') ...[
             const SizedBox(height: 20),
-
             Card(
               elevation: 1,
               color: Colors.white,
@@ -531,10 +551,45 @@ class _HomePageState extends State<HomePage> {
                 onTap: openAdminPanel,
               ),
             ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 1,
+              color: Colors.white,
+              child: ListTile(
+                leading: const Icon(
+                  Icons.receipt_long,
+                  color: Color(0xFF245B45),
+                ),
+                title: const Text(
+                  'مدیریت سفارش‌ها',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('مشاهده سفارش‌ها و تغییر وضعیت آن‌ها'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: openAdminOrders,
+              ),
+            ),
           ],
 
+          const SizedBox(height: 20),
+          Card(
+            elevation: 1,
+            color: Colors.white,
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                'خروج از حساب کاربری',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: const Text('خروج و ورود با حساب کاربری دیگر'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: logout,
+            ),
+          ),
           const SizedBox(height: 25),
-
           const Text(
             'کالکتو؛ دنیای کالاهای خاص و کلکسیونی',
             textAlign: TextAlign.center,
@@ -551,18 +606,14 @@ class _HomePageState extends State<HomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F7F3),
-
         appBar: AppBar(
           backgroundColor: const Color(0xFF245B45),
           foregroundColor: Colors.white,
-
           title: const Text(
             'کالکتو',
             style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
           ),
-
           centerTitle: true,
-
           leading: PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
             onSelected: (value) {
@@ -583,7 +634,6 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-
               const PopupMenuItem<String>(
                 value: 'account',
                 child: Row(
@@ -596,7 +646,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-
           actions: [
             IconButton(
               icon: const Icon(Icons.shopping_cart_outlined),
@@ -607,6 +656,7 @@ class _HomePageState extends State<HomePage> {
                     builder: (context) => CartScreen(
                       cartService: cartService,
                       userId: userId ?? 0,
+                      accessToken: accessToken,
                     ),
                   ),
                 );
@@ -618,9 +668,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-
         body: selectedIndex == 3 ? buildAccountPage() : buildHomePage(),
-
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedIndex,
           onDestinationSelected: onNavigationSelected,

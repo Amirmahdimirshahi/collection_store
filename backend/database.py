@@ -402,3 +402,78 @@ def get_user_orders(user_id):
 
     finally:
         connection.close()
+
+
+def get_all_orders():
+    connection = connect_db()
+
+    try:
+        orders = connection.execute("""
+            SELECT
+                orders.id,
+                orders.user_id,
+                users.full_name,
+                users.phone_number,
+                orders.total_price,
+                orders.status,
+                orders.created_at
+            FROM orders
+            JOIN users ON users.id = orders.user_id
+            ORDER BY orders.created_at DESC, orders.id DESC
+        """).fetchall()
+
+        result = []
+
+        for order in orders:
+            order_data = dict(order)
+
+            items = connection.execute("""
+                SELECT
+                    product_id,
+                    product_name,
+                    quantity,
+                    unit_price,
+                    total_price
+                FROM order_items
+                WHERE order_id = ?
+            """, (order["id"],)).fetchall()
+
+            order_data["items"] = [
+                dict(item) for item in items
+            ]
+
+            result.append(order_data)
+
+        return result
+
+    finally:
+        connection.close()
+
+
+def update_order_status(order_id, status):
+    allowed_statuses = [
+        "pending",
+        "confirmed",
+        "shipped",
+        "delivered",
+        "cancelled"
+    ]
+
+    if status not in allowed_statuses:
+        raise ValueError("وضعیت سفارش معتبر نیست.")
+
+    connection = connect_db()
+
+    try:
+        cursor = connection.execute("""
+            UPDATE orders
+            SET status = ?
+            WHERE id = ?
+        """, (status, order_id))
+
+        connection.commit()
+
+        return cursor.rowcount > 0
+
+    finally:
+        connection.close()

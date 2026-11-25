@@ -8,11 +8,13 @@ import 'login_screen.dart';
 class CartScreen extends StatefulWidget {
   final CartService cartService;
   final int userId;
+  final String accessToken;
 
   const CartScreen({
     super.key,
     required this.cartService,
     required this.userId,
+    required this.accessToken,
   });
 
   @override
@@ -20,8 +22,6 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final OrderService orderService = OrderService();
-
   bool isLoading = false;
 
   Map<String, dynamic>? loggedInUser;
@@ -36,6 +36,8 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     try {
+      String token = widget.accessToken;
+
       int currentUserId = widget.userId;
 
       if (currentUserId == 0) {
@@ -49,17 +51,23 @@ class _CartScreenState extends State<CartScreen> {
         if (user == null) return;
 
         loggedInUser = user;
+
         currentUserId = int.parse(user['id'].toString());
+
+        token = user['access_token']?.toString() ?? '';
+      }
+
+      if (token.isEmpty) {
+        throw Exception('توکن ورود دریافت نشد. لطفاً دوباره وارد حساب شوید.');
       }
 
       final orderItems = items.map((item) {
         return {'product_id': item.product.id, 'quantity': item.quantity};
       }).toList();
 
-      final response = await orderService.createOrder(
-        userId: currentUserId,
-        items: orderItems,
-      );
+      final orderService = OrderService(accessToken: token);
+
+      final response = await orderService.createOrder(items: orderItems);
 
       widget.cartService.clearCart();
 
