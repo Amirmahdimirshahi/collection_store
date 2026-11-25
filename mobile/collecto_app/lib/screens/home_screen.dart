@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-
 import '../models/product_model.dart';
 import '../services/product_service.dart';
 import '../services/cart_service.dart';
 import '../widgets/category_item.dart';
 import '../widgets/product_card.dart';
-
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import 'order_history_screen.dart';
@@ -64,6 +62,20 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> refreshProducts() async {
+    final newProductsFuture = productService.getProducts();
+
+    if (!mounted) return;
+
+    setState(() {
+      productsFuture = newProductsFuture;
+    });
+
+    try {
+      await newProductsFuture;
+    } catch (_) {}
   }
 
   void updateUser(Map<String, dynamic> user) {
@@ -189,9 +201,7 @@ class _HomePageState extends State<HomePage> {
 
     if (!mounted) return;
 
-    setState(() {
-      productsFuture = productService.getProducts();
-    });
+    await refreshProducts();
   }
 
   Future<void> openAdminOrders() async {
@@ -217,6 +227,10 @@ class _HomePageState extends State<HomePage> {
         builder: (context) => AdminOrdersScreen(accessToken: accessToken),
       ),
     );
+
+    if (!mounted) return;
+
+    await refreshProducts();
   }
 
   IconData getCategoryIcon(String category) {
@@ -369,11 +383,7 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 10),
                         const Text('دریافت محصولات با خطا مواجه شد.'),
                         TextButton(
-                          onPressed: () {
-                            setState(() {
-                              productsFuture = productService.getProducts();
-                            });
-                          },
+                          onPressed: refreshProducts,
                           child: const Text('تلاش مجدد'),
                         ),
                       ],
@@ -531,7 +541,6 @@ class _HomePageState extends State<HomePage> {
               onTap: openOrderHistory,
             ),
           ),
-
           if (userRole == 'admin') ...[
             const SizedBox(height: 20),
             Card(
@@ -570,7 +579,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
-
           const SizedBox(height: 20),
           Card(
             elevation: 1,
@@ -661,9 +669,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
 
-                if (!mounted || user == null) return;
+                if (!mounted) return;
 
-                updateUser(user);
+                if (user != null) {
+                  updateUser(user);
+                }
+
+                await refreshProducts();
               },
             ),
           ],
