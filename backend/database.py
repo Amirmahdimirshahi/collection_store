@@ -84,11 +84,22 @@ def create_tables():
             )
         """)
 
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS favorites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (product_id) REFERENCES products(id),
+                UNIQUE(user_id, product_id)
+            )
+        """)
+
         connection.commit()
 
     finally:
         connection.close()
-
 
 def add_product(name, category, description, price, quantity):
     connection = connect_db()
@@ -257,6 +268,87 @@ def get_database_stats():
             "products": product_count,
             "users": user_count
         }
+
+    finally:
+        connection.close()
+
+
+def add_favorite(user_id, product_id):
+    connection = connect_db()
+
+    try:
+        user = connection.execute("""
+            SELECT id FROM users
+            WHERE id = ?
+        """, (user_id,)).fetchone()
+
+        if not user:
+            raise ValueError("کاربر پیدا نشد.")
+
+        product = connection.execute("""
+            SELECT id FROM products
+            WHERE id = ?
+        """, (product_id,)).fetchone()
+
+        if not product:
+            raise ValueError("محصول پیدا نشد.")
+
+        connection.execute("""
+            INSERT OR IGNORE INTO favorites
+            (user_id, product_id)
+            VALUES (?, ?)
+        """, (user_id, product_id))
+
+        connection.commit()
+
+        return True
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
+
+def remove_favorite(user_id, product_id):
+    connection = connect_db()
+
+    try:
+        cursor = connection.execute("""
+            DELETE FROM favorites
+            WHERE user_id = ? AND product_id = ?
+        """, (user_id, product_id))
+
+        connection.commit()
+
+        return cursor.rowcount > 0
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
+
+def get_user_favorites(user_id):
+    connection = connect_db()
+
+    try:
+        favorites = connection.execute("""
+            SELECT
+                products.*,
+                favorites.id AS favorite_id,
+                favorites.created_at AS favorite_created_at
+            FROM favorites
+            INNER JOIN products
+                ON products.id = favorites.product_id
+            WHERE favorites.user_id = ?
+            ORDER BY favorites.created_at DESC
+        """, (user_id,)).fetchall()
+
+        return [dict(product) for product in favorites]
 
     finally:
         connection.close()

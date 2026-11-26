@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../models/product_model.dart';
 import '../services/product_service.dart';
 import '../services/cart_service.dart';
+import '../services/favorite_service.dart';
 import '../widgets/category_item.dart';
 import '../widgets/product_card.dart';
 import 'product_detail_screen.dart';
@@ -10,6 +12,7 @@ import 'order_history_screen.dart';
 import 'login_screen.dart';
 import 'admin_products_screen.dart';
 import 'admin_orders_screen.dart';
+import 'favorites_screen.dart';
 
 class HomePage extends StatefulWidget {
   final int userId;
@@ -30,7 +33,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ProductService productService = ProductService();
   final CartService cartService = CartService();
-
   final TextEditingController searchController = TextEditingController();
 
   late Future<List<dynamic>> productsFuture;
@@ -45,6 +47,8 @@ class _HomePageState extends State<HomePage> {
 
   int selectedIndex = 0;
 
+  Set<int> favoriteIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +56,6 @@ class _HomePageState extends State<HomePage> {
     userId = widget.userId == 0 ? null : widget.userId;
     userName = widget.userName;
     phoneNumber = widget.phoneNumber;
-
     userRole = widget.userId == 0 ? 'guest' : 'user';
 
     productsFuture = productService.getProducts();
@@ -78,6 +81,74 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
+  Future<void> loadFavoriteIds() async {
+    if (accessToken.isEmpty) {
+      if (!mounted) return;
+
+      setState(() {
+        favoriteIds.clear();
+      });
+
+      return;
+    }
+
+    try {
+      final service = FavoriteService(accessToken: accessToken);
+      final favorites = await service.getFavorites();
+
+      if (!mounted) return;
+
+      setState(() {
+        favoriteIds = favorites.map((product) => product.id).toSet();
+      });
+    } catch (error) {
+      debugPrint('خطا در دریافت علاقه‌مندی‌ها: $error');
+    }
+  }
+
+  Future<void> toggleFavorite(int productId) async {
+    final loggedIn = await ensureLogin();
+
+    if (!mounted || !loggedIn) return;
+
+    final service = FavoriteService(accessToken: accessToken);
+    final wasFavorite = favoriteIds.contains(productId);
+
+    try {
+      if (wasFavorite) {
+        await service.removeFavorite(productId);
+      } else {
+        await service.addFavorite(productId);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        if (wasFavorite) {
+          favoriteIds.remove(productId);
+        } else {
+          favoriteIds.add(productId);
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            wasFavorite
+                ? 'محصول از علاقه‌مندی‌ها حذف شد.'
+                : 'محصول به علاقه‌مندی‌ها اضافه شد.',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('عملیات انجام نشد: $error')));
+    }
+  }
+
   void updateUser(Map<String, dynamic> user) {
     setState(() {
       userId = int.parse(user['id'].toString());
@@ -91,6 +162,8 @@ class _HomePageState extends State<HomePage> {
         accessToken = newToken;
       }
     });
+
+    loadFavoriteIds();
   }
 
   Future<bool> ensureLogin() async {
@@ -151,6 +224,7 @@ class _HomePageState extends State<HomePage> {
       phoneNumber = '';
       userRole = 'guest';
       accessToken = '';
+      favoriteIds.clear();
       selectedIndex = 0;
     });
 
@@ -271,17 +345,31 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    if (index == 2) {
+      final loggedIn = await ensureLogin();
+
+      if (!mounted || !loggedIn) return;
+
+      setState(() {
+        selectedIndex = 2;
+      });
+
+      return;
+    }
+
     setState(() {
       selectedIndex = index;
     });
 
+    if (index == 0) {
+      await loadFavoriteIds();
+    }
+
+    if (!mounted) return;
+
     if (index == 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('بخش دسته‌بندی‌ها در حال تکمیل است.')),
-      );
-    } else if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('بخش علاقه‌مندی‌ها در حال تکمیل است.')),
       );
     }
   }
@@ -433,6 +521,8 @@ class _HomePageState extends State<HomePage> {
                       name: name,
                       price: '$price تومان',
                       icon: getCategoryIcon(category),
+                      isFavorite: favoriteIds.contains(productModel.id),
+                      onFavoriteTap: () => toggleFavorite(productModel.id),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -680,7 +770,11 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        body: selectedIndex == 3 ? buildAccountPage() : buildHomePage(),
+        body: selectedIndex == 3
+            ? buildAccountPage()
+            : selectedIndex == 2
+            ? FavoritesScreen(accessToken: accessToken)
+            : buildHomePage(),
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedIndex,
           onDestinationSelected: onNavigationSelected,

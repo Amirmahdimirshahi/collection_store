@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class OrderService {
-  static const String baseUrl = 'http://10.91.225.140:8000';
+  static const String baseUrl = 'http://192.168.1.247:8000';
 
   final String accessToken;
 

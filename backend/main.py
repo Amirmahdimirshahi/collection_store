@@ -2,6 +2,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+
 from auth_service import generate_otp, verify_otp
 from security import create_access_token, verify_access_token
 
@@ -18,6 +19,9 @@ from database import (
     get_user_orders,
     get_all_orders,
     update_order_status,
+    add_favorite,
+    remove_favorite,
+    get_user_favorites,
 )
 
 
@@ -157,7 +161,7 @@ def edit_product(
 
 
 @app.delete("/products/{product_id}")
-def remove_product(
+def remove_product_api(
     product_id: int,
     admin: dict = Depends(get_admin_user)
 ):
@@ -245,6 +249,62 @@ def read_current_user(
 ):
     return {
         "user": current_user
+    }
+
+
+@app.get("/favorites")
+def read_favorites(
+    current_user: dict = Depends(get_current_user)
+):
+    favorites = get_user_favorites(current_user["id"])
+
+    return {
+        "favorites": favorites
+    }
+
+
+@app.post("/favorites/{product_id}")
+def create_favorite(
+    product_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        add_favorite(
+            current_user["id"],
+            product_id
+        )
+
+        return {
+            "message": "محصول به علاقه‌مندی‌ها اضافه شد.",
+            "product_id": product_id
+        }
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error)
+        )
+
+
+@app.delete("/favorites/{product_id}")
+def delete_favorite(
+    product_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    deleted = remove_favorite(
+        current_user["id"],
+        product_id
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="این محصول در علاقه‌مندی‌های شما وجود ندارد."
+        )
+
+    return {
+        "message": "محصول از علاقه‌مندی‌ها حذف شد.",
+        "product_id": product_id
     }
 
 
