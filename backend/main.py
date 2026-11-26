@@ -4,7 +4,13 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 from auth_service import generate_otp, verify_otp
-from security import create_access_token, verify_access_token
+
+from security import (
+    create_access_token,
+    verify_access_token,
+    hash_password,
+    verify_password,
+)
 
 from database import (
     create_tables,
@@ -16,6 +22,7 @@ from database import (
     create_order,
     get_user_by_phone,
     get_user_by_id,
+    set_user_password,
     get_user_orders,
     get_all_orders,
     update_order_status,
@@ -48,10 +55,26 @@ class SendCodeRequest(BaseModel):
     phone_number: str
 
 
+class CheckPhoneRequest(BaseModel):
+    phone_number: str
+
+
+class LoginRequest(BaseModel):
+    phone_number: str
+    password: str
+
+
 class VerifyCodeRequest(BaseModel):
     phone_number: str
-    full_name: str
+    full_name: str | None = None
+    password: str
     code: str
+
+
+class ResetPasswordRequest(BaseModel):
+    phone_number: str
+    code: str
+    new_password: str
 
 
 class OrderItemRequest(BaseModel):
@@ -65,6 +88,65 @@ class CreateOrderRequest(BaseModel):
 
 class UpdateOrderStatusRequest(BaseModel):
     status: str
+
+
+def validate_phone(phone: str):
+    phone = phone.strip()
+
+    if (
+        len(phone) != 11
+        or not phone.startswith("09")
+        or not phone.isdigit()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="شماره موبایل معتبر نیست."
+        )
+
+    return phone
+
+
+def validate_password(password: str):
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="رمز عبور باید حداقل ۸ کاراکتر باشد."
+        )
+
+    if len(password) > 128:
+        raise HTTPException(
+            status_code=400,
+            detail="رمز عبور نباید بیشتر از ۱۲۸ کاراکتر باشد."
+        )
+
+
+def public_user(user: dict):
+    """
+    اطلاعات مجاز کاربر برای ارسال به Flutter
+    """
+
+    return {
+        "id": user["id"],
+        "full_name": user["full_name"],
+        "phone_number": user["phone_number"],
+        "role": user["role"],
+    }
+
+
+def create_login_response(user: dict):
+    """
+    ساخت پاسخ مشترک برای ورود کاربران
+    """
+
+    safe_user = public_user(user)
+    access_token = create_access_token(user)
+
+    return {
+        "message": "ورود با موفقیت انجام شد.",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": safe_user
+    }
 
 
 def get_current_user(
@@ -178,68 +260,227 @@ def remove_product_api(
     }
 
 
+@app.post("/auth/check-phone")
+def check_phone(request: CheckPhoneRequest):
+    phone = validate_phone(request.phone_number)
+
+    user = get_user_by_phone(phone)
+
+    if not user:
+        return {
+            "has_account": False,
+            "has_password": False,
+            "requires_name": True
+        }
+
+    has_password = bool(user.get("password_hash"))
+
+    return {
+        "has_account": True,
+        "has_password": has_password,
+        "requires_name": False
+    }
+
+
 @app.post("/auth/send-code")
 def send_login_code(request: SendCodeRequest):
-    phone = request.phone_number.strip()
+    phone = validate_phone(request.phone_number)
 
-    if (
-        len(phone) != 11
-        or not phone.startswith("09")
-        or not phone.isdigit()
-    ):
+    user = get_user_by_phone(phone)
+
+    if user and user.get("password_hash"):
         raise HTTPException(
             status_code=400,
-            detail="Invalid phone number"
+            detail="این حساب رمز عبور دارد. با رمز عبور وارد شوید."
         )
 
     generate_otp(phone)
 
     return {
-        "message": "Verification code generated successfully"
+        "message": "کد تأیید با موفقیت ایجاد شد."
     }
+
+@app.post("/auth/forgot-password/send-code")
+def send_password_reset_code(request: SendCodeRequest):
+    phone = validate_phone(request.phone_number)
+
+    user = get_user_by_phone(phone)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="حساب کاربری با این شماره موبایل پیدا نشد."
+        )
+
+    if not user.get("password_hash"):
+        raise HTTPException(
+            status_code=400,
+            detail="این حساب هنوز رمز عبور ندارد. از روش فعال‌سازی حساب استفاده کنید."
+        )
+
+    generate_otp(phone)
+
+    return {
+        "message": "کد بازیابی با موفقیت ایجاد شد."
+    }
+
+
+@app.post("/auth/login")
+def login_with_password(request: LoginRequest):
+    phone = validate_phone(request.phone_number)
+
+    validate_password(request.password)
+
+    user = get_user_by_phone(phone)
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="شماره موبایل یا رمز عبور اشتباه است."
+        )
+
+    stored_hash = user.get("password_hash")
+
+    if not stored_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا باید حساب خود را با کد تأیید فعال کنید."
+        )
+
+    if not verify_password(request.password, stored_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="شماره موبایل یا رمز عبور اشتباه است."
+        )
+
+    return create_login_response(user)
 
 
 @app.post("/auth/verify-code")
 def verify_login_code(request: VerifyCodeRequest):
-    phone = request.phone_number.strip()
-    name = request.full_name.strip()
+    phone = validate_phone(request.phone_number)
+
     code = request.code.strip()
+    password = request.password
 
-    if (
-        not phone.isdigit()
-        or len(phone) != 11
-        or not phone.startswith("09")
-    ):
+    validate_password(password)
+
+    if not code.isdigit() or len(code) != 6:
         raise HTTPException(
             status_code=400,
-            detail="Invalid phone number"
+            detail="کد تأیید باید ۶ رقم باشد."
         )
 
-    if not name:
+    user = get_user_by_phone(phone)
+
+    if user and user.get("password_hash"):
         raise HTTPException(
             status_code=400,
-            detail="Full name is required"
+            detail="این حساب قبلاً رمز عبور دارد. از روش ورود با رمز استفاده کنید."
         )
+
+    if not user:
+        name = (request.full_name or "").strip()
+
+        if not name:
+            raise HTTPException(
+                status_code=400,
+                detail="نام و نام خانوادگی الزامی است."
+            )
 
     if not verify_otp(phone, code):
         raise HTTPException(
             status_code=400,
-            detail="Invalid or expired code"
+            detail="کد تأیید اشتباه است یا اعتبار آن تمام شده است."
+        )
+
+    if not user:
+        name = request.full_name.strip()
+
+        try:
+            add_user(phone, name)
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="ساخت حساب کاربری ناموفق بود."
+            )
+
+        user = get_user_by_phone(phone)
+
+    if not user:
+        raise HTTPException(
+            status_code=500,
+            detail="خطا در دریافت اطلاعات کاربر."
+        )
+
+    password_hash = hash_password(password)
+
+    saved = set_user_password(
+        user["id"],
+        password_hash
+    )
+
+    if not saved:
+        raise HTTPException(
+            status_code=500,
+            detail="ذخیره رمز عبور ناموفق بود."
+        )
+
+    user = get_user_by_id(user["id"])
+
+    return create_login_response(user)
+
+
+@app.post("/auth/forgot-password/reset")
+def reset_password(request: ResetPasswordRequest):
+    phone = validate_phone(request.phone_number)
+
+    code = request.code.strip()
+    new_password = request.new_password
+
+    validate_password(new_password)
+
+    if not code.isdigit() or len(code) != 6:
+        raise HTTPException(
+            status_code=400,
+            detail="کد تأیید باید ۶ رقم باشد."
         )
 
     user = get_user_by_phone(phone)
 
     if not user:
-        add_user(phone, name)
-        user = get_user_by_phone(phone)
+        raise HTTPException(
+            status_code=404,
+            detail="حساب کاربری پیدا نشد."
+        )
 
-    access_token = create_access_token(user)
+    if not user.get("password_hash"):
+        raise HTTPException(
+            status_code=400,
+            detail="این حساب هنوز رمز عبور ندارد."
+        )
+
+    if not verify_otp(phone, code):
+        raise HTTPException(
+            status_code=400,
+            detail="کد تأیید اشتباه است یا اعتبار آن تمام شده است."
+        )
+
+    password_hash = hash_password(new_password)
+
+    saved = set_user_password(
+        user["id"],
+        password_hash
+    )
+
+    if not saved:
+        raise HTTPException(
+            status_code=500,
+            detail="ذخیره رمز عبور جدید ناموفق بود."
+        )
 
     return {
-        "message": "Login successful",
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": user
+        "message": "رمز عبور با موفقیت تغییر کرد."
     }
 
 
@@ -248,7 +489,7 @@ def read_current_user(
     current_user: dict = Depends(get_current_user)
 ):
     return {
-        "user": current_user
+        "user": public_user(current_user)
     }
 
 

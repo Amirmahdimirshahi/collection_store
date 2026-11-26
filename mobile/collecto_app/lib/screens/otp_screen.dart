@@ -5,8 +5,13 @@ import '../services/auth_service.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
+  final bool requiresName;
 
-  const OtpScreen({super.key, required this.phoneNumber});
+  const OtpScreen({
+    super.key,
+    required this.phoneNumber,
+    this.requiresName = false,
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -15,19 +20,38 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController codeController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   final AuthService authService = AuthService();
 
   bool isLoading = false;
+  bool showPassword = false;
 
   Future<void> verifyCode() async {
     final code = codeController.text.trim();
     final fullName = nameController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
 
-    if (fullName.isEmpty || code.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('نام و کد تأیید ۶ رقمی را وارد کنید.')),
-      );
+    if (widget.requiresName && fullName.isEmpty) {
+      showMessage('نام و نام خانوادگی را وارد کنید.');
+      return;
+    }
+
+    if (code.length != 6) {
+      showMessage('کد تأیید باید ۶ رقم باشد.');
+      return;
+    }
+
+    if (password.length < 8) {
+      showMessage('رمز عبور باید حداقل ۸ کاراکتر باشد.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      showMessage('رمز عبور و تکرار آن یکسان نیستند.');
       return;
     }
 
@@ -38,7 +62,8 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       final response = await authService.verifyCode(
         phoneNumber: widget.phoneNumber,
-        fullName: fullName,
+        fullName: widget.requiresName ? fullName : null,
+        password: password,
         code: code,
       );
 
@@ -67,9 +92,7 @@ class _OtpScreenState extends State<OtpScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      showMessage(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) {
         setState(() {
@@ -79,10 +102,17 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   void dispose() {
     codeController.dispose();
     nameController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -109,17 +139,29 @@ class _OtpScreenState extends State<OtpScreen> {
                   size: 75,
                   color: Color(0xFF245B45),
                 ),
+
                 const SizedBox(height: 24),
-                const Text(
-                  'تأیید شماره موبایل',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+
+                Text(
+                  widget.requiresName
+                      ? 'ساخت حساب کاربری'
+                      : 'تکمیل ورود به حساب',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+
                 const SizedBox(height: 12),
+
                 const Text(
-                  'کد تأیید ارسال‌شده را وارد کنید.',
+                  'کد تأیید را وارد کنید و رمز عبور خود را تعیین کنید.',
+                  textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
+
                 const SizedBox(height: 12),
+
                 Text(
                   widget.phoneNumber,
                   textDirection: TextDirection.ltr,
@@ -128,19 +170,67 @@ class _OtpScreenState extends State<OtpScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 30),
+
+                if (widget.requiresName) ...[
+                  TextField(
+                    controller: nameController,
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: 'نام و نام خانوادگی',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+                ],
+
                 TextField(
-                  controller: nameController,
+                  controller: passwordController,
+                  obscureText: !showPassword,
+                  textDirection: TextDirection.ltr,
                   textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
-                    labelText: 'نام و نام خانوادگی',
-                    prefixIcon: const Icon(Icons.person_outline),
+                    labelText: 'رمز عبور جدید',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          showPassword = !showPassword;
+                        });
+                      },
+                      icon: Icon(
+                        showPassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: !showPassword,
+                  textDirection: TextDirection.ltr,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'تکرار رمز عبور',
+                    prefixIcon: const Icon(Icons.lock_reset),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
                 TextField(
                   controller: codeController,
                   keyboardType: TextInputType.number,
@@ -150,13 +240,15 @@ class _OtpScreenState extends State<OtpScreen> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     labelText: 'کد تأیید ۶ رقمی',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.password),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
                 SizedBox(
                   width: double.infinity,
                   height: 52,

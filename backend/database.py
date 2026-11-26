@@ -59,6 +59,20 @@ def create_tables():
             )
         """)
 
+        user_columns = connection.execute(
+            "PRAGMA table_info(users)"
+        ).fetchall()
+
+        existing_columns = [
+            column["name"] for column in user_columns
+        ]
+
+        if "password_hash" not in existing_columns:
+            connection.execute("""
+                ALTER TABLE users
+                ADD COLUMN password_hash TEXT
+            """)
+
         connection.execute("""
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,6 +114,7 @@ def create_tables():
 
     finally:
         connection.close()
+
 
 def add_product(name, category, description, price, quantity):
     connection = connect_db()
@@ -247,6 +262,43 @@ def get_user_by_id(user_id):
         """, (user_id,)).fetchone()
 
         return dict(user) if user else None
+
+    finally:
+        connection.close()
+
+
+def set_user_password(user_id, password_hash):
+    connection = connect_db()
+
+    try:
+        cursor = connection.execute("""
+            UPDATE users
+            SET password_hash = ?
+            WHERE id = ?
+        """, (password_hash, user_id))
+
+        connection.commit()
+
+        return cursor.rowcount > 0
+
+    finally:
+        connection.close()
+
+
+def get_user_password_hash(phone_number):
+    connection = connect_db()
+
+    try:
+        user = connection.execute("""
+            SELECT password_hash
+            FROM users
+            WHERE phone_number = ?
+        """, (phone_number,)).fetchone()
+
+        if not user:
+            return None
+
+        return user["password_hash"]
 
     finally:
         connection.close()
